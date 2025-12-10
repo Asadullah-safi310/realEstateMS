@@ -207,7 +207,7 @@ const AddProperty = () => {
                   </div>
                 </div>
 
-                {id && (
+                {(
                   <div className="mb-4">
                     <label className="block text-gray-700 text-sm font-semibold mb-2">Photos & Attachments</label>
                     <div className="border-2 border-dashed border-gray-300 rounded p-4 mb-3">
