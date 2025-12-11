@@ -41,8 +41,8 @@ const DealList = observer(() => {
                 ⊞ Grid
               </button>
             </div>
-            <button onClick={() => navigate('/deals/add')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
-              Add Deal
+            <button onClick={() => navigate('/create-deal')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+              Create Deal
             </button>
           </div>
         </div>
@@ -56,9 +56,10 @@ const DealList = observer(() => {
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold">Deal ID</th>
                   <th className="px-4 py-3 text-left font-semibold">Property</th>
-                  <th className="px-4 py-3 text-left font-semibold">Client</th>
-                  <th className="px-4 py-3 text-left font-semibold">Final Price</th>
-                  <th className="px-4 py-3 text-left font-semibold">Deal Type</th>
+                  <th className="px-4 py-3 text-left font-semibold">Type</th>
+                  <th className="px-4 py-3 text-left font-semibold">Owner</th>
+                  <th className="px-4 py-3 text-left font-semibold">Buyer/Tenant</th>
+                  <th className="px-4 py-3 text-left font-semibold">Price</th>
                   <th className="px-4 py-3 text-left font-semibold">Status</th>
                   <th className="px-4 py-3 text-left font-semibold">Date</th>
                 </tr>
@@ -67,16 +68,21 @@ const DealList = observer(() => {
                 {DealStore.deals.map(deal => (
                   <tr key={deal.deal_id} className="border-t hover:bg-gray-50">
                     <td className="px-4 py-3">{deal.deal_id}</td>
-                    <td className="px-4 py-3">{deal.property_type} - {deal.location}</td>
-                    <td className="px-4 py-3">{deal.client_name}</td>
-                    <td className="px-4 py-3">Rs {deal.final_price}</td>
-                    <td className="px-4 py-3">{deal.deal_type}</td>
+                    <td className="px-4 py-3">{deal.DealProperty?.property_type} - {deal.DealProperty?.location}, {deal.DealProperty?.city}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded text-white text-xs font-semibold ${deal.deal_type === 'SALE' ? 'bg-red-500' : 'bg-blue-500'}`}>
+                        {deal.deal_type}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">{deal.Owner?.full_name}</td>
+                    <td className="px-4 py-3">{deal.Buyer?.full_name || 'N/A'}</td>
+                    <td className="px-4 py-3">Rs {deal.price ? parseFloat(deal.price).toLocaleString() : 'N/A'}</td>
                     <td className="px-4 py-3">
                       <span className="px-2 py-1 rounded text-white text-xs font-semibold bg-green-500">
                         {deal.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3">{new Date(deal.date).toLocaleDateString()}</td>
+                    <td className="px-4 py-3">{new Date(deal.createdAt).toLocaleDateString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -89,17 +95,20 @@ const DealList = observer(() => {
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h3 className="text-lg font-bold text-gray-800">Deal #{deal.deal_id}</h3>
-                    <p className="text-sm text-gray-600">{deal.deal_type}</p>
+                    <span className={`text-xs font-semibold ${deal.deal_type === 'SALE' ? 'text-red-600' : 'text-blue-600'}`}>
+                      {deal.deal_type}
+                    </span>
                   </div>
                   <span className="px-3 py-1 rounded text-white text-xs font-semibold bg-green-500">
                     {deal.status}
                   </span>
                 </div>
                 <div className="space-y-2 text-sm mb-4">
-                  <p className="text-gray-600"><strong>Property:</strong> {deal.property_type} - {deal.location}</p>
-                  <p className="text-gray-600"><strong>Client:</strong> {deal.client_name}</p>
-                  <p className="text-gray-600"><strong>Final Price:</strong> Rs {deal.final_price}</p>
-                  <p className="text-gray-600"><strong>Date:</strong> {new Date(deal.date).toLocaleDateString()}</p>
+                  <p className="text-gray-600"><strong>Property:</strong> {deal.DealProperty?.property_type} - {deal.DealProperty?.location}, {deal.DealProperty?.city}</p>
+                  <p className="text-gray-600"><strong>Owner:</strong> {deal.Owner?.full_name}</p>
+                  <p className="text-gray-600"><strong>Buyer/Tenant:</strong> {deal.Buyer?.full_name || 'N/A'}</p>
+                  {deal.price && <p className="text-gray-600"><strong>Price:</strong> Rs {parseFloat(deal.price).toLocaleString()}</p>}
+                  <p className="text-gray-600"><strong>Date:</strong> {new Date(deal.createdAt).toLocaleDateString()}</p>
                 </div>
               </div>
             ))}

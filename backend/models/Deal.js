@@ -11,16 +11,35 @@ const Deal = sequelize.define('Deal', {
     type: DataTypes.INTEGER,
     allowNull: false,
   },
-  client_id: {
-    type: DataTypes.INTEGER,
+  deal_type: {
+    type: DataTypes.ENUM('SALE', 'RENT'),
     allowNull: false,
   },
-  final_price: {
+  owner_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    comment: 'Current owner before the deal',
+  },
+  buyer_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Person becoming the new owner (for SALE) or tenant (for RENT)',
+  },
+  tenant_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Tenant (for SALE, if property has tenant)',
+  },
+  price: {
     type: DataTypes.DECIMAL(18, 2),
     allowNull: true,
   },
-  deal_type: {
-    type: DataTypes.STRING(20),
+  start_date: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  notes: {
+    type: DataTypes.TEXT,
     allowNull: true,
   },
   status: {

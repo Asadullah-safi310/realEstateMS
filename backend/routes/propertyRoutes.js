@@ -5,7 +5,7 @@ const { createProperty, getProperties, getPropertyById, searchProperties, update
 const { upload } = require('../utils/upload');
 
 router.post('/', [
-  body('owner_id').notEmpty().withMessage('Owner ID is required'),
+  body('person_id').notEmpty().isInt().withMessage('Person ID is required and must be an integer'),
   body('property_type').notEmpty().withMessage('Property type is required'),
   body('purpose').notEmpty().withMessage('Purpose is required'),
   body('price').notEmpty().withMessage('Price is required'),
@@ -21,7 +21,6 @@ router.get('/search', searchProperties);
 router.get('/:id', getPropertyById);
 
 router.put('/:id', [
-  body('owner_id').notEmpty().withMessage('Owner ID is required'),
   body('property_type').notEmpty().withMessage('Property type is required'),
   body('purpose').notEmpty().withMessage('Purpose is required'),
   body('price').notEmpty().withMessage('Price is required'),

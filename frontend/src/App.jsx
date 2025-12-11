@@ -10,10 +10,11 @@ import AddOwner from './pages/AddOwner';
 import PropertyList from './pages/PropertyList';
 import AddProperty from './pages/AddProperty';
 import SearchProperties from './pages/SearchProperties';
+import PropertyDetails from './pages/PropertyDetails';
 import ClientList from './pages/ClientList';
 import AddClient from './pages/AddClient';
 import DealList from './pages/DealList';
-import AddDeal from './pages/AddDeal';
+import CreateDeal from './pages/CreateDeal';
 import Settings from './pages/Settings';
 
 function App() {
@@ -32,12 +33,14 @@ function App() {
         <Route path="/properties/add" element={<AddProperty />} />
         <Route path="/properties/:id" element={<AddProperty />} />
         <Route path="/properties/search" element={<SearchProperties />} />
+        <Route path="/property-details/:id" element={<PropertyDetails />} />
         
         <Route path="/clients" element={<ClientList />} />
         <Route path="/clients/add" element={<AddClient />} />
         
         <Route path="/deals" element={<DealList />} />
-        <Route path="/deals/add" element={<AddDeal />} />
+        <Route path="/deals/add" element={<CreateDeal />} />
+        <Route path="/create-deal" element={<CreateDeal />} />
         
         <Route path="/settings" element={<Settings />} />
       </Routes>

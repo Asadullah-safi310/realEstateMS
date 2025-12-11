@@ -1,5 +1,5 @@
 const { validationResult } = require('express-validator');
-const { Deal, Property, Client } = require('../models');
+const { Deal, Property, Person, PersonPropertyRole } = require('../models');
 const { sequelize } = require('../config/db');
 
 const createDeal = async (req, res) => {
@@ -11,24 +11,128 @@ const createDeal = async (req, res) => {
   const transaction = await sequelize.transaction();
 
   try {
-    const { property_id, client_id, final_price, deal_type } = req.body;
+    const { deal_type, property_id, owner_id, buyer_id, tenant_id, price, start_date, notes } = req.body;
 
-    await Deal.create({
-      property_id,
-      client_id,
-      final_price,
-      deal_type,
-      status: 'completed',
-    }, { transaction });
+    const property = await Property.findByPk(property_id, { transaction });
+    if (!property) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Property not found' });
+    }
 
-    const status = deal_type === 'rent' ? 'rented' : 'sold';
-    await Property.update(
-      { status },
-      { where: { property_id }, transaction }
-    );
+    const owner = await Person.findByPk(owner_id, { transaction });
+    if (!owner) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Owner not found' });
+    }
+
+    if (deal_type === 'SALE') {
+      if (!buyer_id) {
+        await transaction.rollback();
+        return res.status(400).json({ error: 'Buyer ID is required for SALE deal' });
+      }
+
+      const buyer = await Person.findByPk(buyer_id, { transaction });
+      if (!buyer) {
+        await transaction.rollback();
+        return res.status(404).json({ error: 'Buyer not found' });
+      }
+
+      const deal = await Deal.create({
+        property_id,
+        deal_type: 'SALE',
+        owner_id,
+        buyer_id,
+        tenant_id: tenant_id || null,
+        price,
+        notes,
+        status: 'completed',
+      }, { transaction });
+
+      const currentOwnerRole = await PersonPropertyRole.findOne({
+        where: { property_id, role: 'OWNER', end_date: null },
+        transaction,
+      });
+
+      if (currentOwnerRole) {
+        await currentOwnerRole.update({ end_date: new Date() }, { transaction });
+      }
+
+      await PersonPropertyRole.create({
+        person_id: buyer_id,
+        property_id,
+        role: 'OWNER',
+        start_date: new Date(),
+      }, { transaction });
+
+      const currentTenantRole = await PersonPropertyRole.findOne({
+        where: { property_id, role: 'TENANT', end_date: null },
+        transaction,
+      });
+
+      if (currentTenantRole && tenant_id && currentTenantRole.person_id !== tenant_id) {
+        await currentTenantRole.update({ end_date: new Date() }, { transaction });
+      }
+
+      await Property.update(
+        { status: 'sold' },
+        { where: { property_id }, transaction }
+      );
+    } else if (deal_type === 'RENT') {
+      if (!buyer_id) {
+        await transaction.rollback();
+        return res.status(400).json({ error: 'Tenant ID is required for RENT deal' });
+      }
+
+      if (!start_date) {
+        await transaction.rollback();
+        return res.status(400).json({ error: 'Start date is required for RENT deal' });
+      }
+
+      const tenant = await Person.findByPk(buyer_id, { transaction });
+      if (!tenant) {
+        await transaction.rollback();
+        return res.status(404).json({ error: 'Tenant not found' });
+      }
+
+      const deal = await Deal.create({
+        property_id,
+        deal_type: 'RENT',
+        owner_id,
+        buyer_id,
+        tenant_id: buyer_id,
+        price,
+        start_date,
+        notes,
+        status: 'completed',
+      }, { transaction });
+
+      const currentTenantRole = await PersonPropertyRole.findOne({
+        where: { property_id, role: 'TENANT', end_date: null },
+        transaction,
+      });
+
+      if (currentTenantRole) {
+        await currentTenantRole.update({ end_date: new Date() }, { transaction });
+      }
+
+      await PersonPropertyRole.create({
+        person_id: buyer_id,
+        property_id,
+        role: 'TENANT',
+        start_date: new Date(),
+      }, { transaction });
+
+      await Property.update(
+        { status: 'rented' },
+        { where: { property_id }, transaction }
+      );
+    } else {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Invalid deal type. Must be SALE or RENT' });
+    }
 
     await transaction.commit();
-    res.status(201).json({ message: 'Deal created successfully and property status updated' });
+    res.status(201).json({ message: `${deal_type} deal created successfully and property updated` });
   } catch (error) {
     await transaction.rollback();
     res.status(500).json({ error: error.message });
@@ -39,25 +143,15 @@ const getDeals = async (req, res) => {
   try {
     const deals = await Deal.findAll({
       include: [
-        { model: Property, as: 'Property', attributes: ['property_type', 'location'] },
-        { model: Client, as: 'Client', attributes: ['client_name'] },
+        { model: Property, as: 'DealProperty', attributes: ['property_id', 'property_type', 'location', 'city', 'price'] },
+        { model: Person, as: 'Owner', attributes: ['person_id', 'full_name', 'phone'] },
+        { model: Person, as: 'Buyer', attributes: ['person_id', 'full_name', 'phone'] },
+        { model: Person, as: 'Tenant', attributes: ['person_id', 'full_name', 'phone'] },
       ],
+      order: [['createdAt', 'DESC']],
     });
 
-    const formattedDeals = deals.map(deal => ({
-      deal_id: deal.deal_id,
-      property_id: deal.property_id,
-      client_id: deal.client_id,
-      final_price: deal.final_price,
-      deal_type: deal.deal_type,
-      status: deal.status,
-      date: deal.created_at,
-      property_type: deal.Property?.property_type,
-      location: deal.Property?.location,
-      client_name: deal.Client?.client_name,
-    }));
-
-    res.json(formattedDeals);
+    res.json(deals);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -68,8 +162,10 @@ const getDealById = async (req, res) => {
     const { id } = req.params;
     const deal = await Deal.findByPk(id, {
       include: [
-        { model: Property, as: 'Property', attributes: ['property_type', 'location'] },
-        { model: Client, as: 'Client', attributes: ['client_name'] },
+        { model: Property, as: 'DealProperty', attributes: ['property_id', 'property_type', 'location', 'city', 'price', 'status'] },
+        { model: Person, as: 'Owner', attributes: ['person_id', 'full_name', 'phone', 'email'] },
+        { model: Person, as: 'Buyer', attributes: ['person_id', 'full_name', 'phone', 'email'] },
+        { model: Person, as: 'Tenant', attributes: ['person_id', 'full_name', 'phone', 'email'] },
       ],
     });
 
@@ -77,20 +173,7 @@ const getDealById = async (req, res) => {
       return res.status(404).json({ error: 'Deal not found' });
     }
 
-    const formattedDeal = {
-      deal_id: deal.deal_id,
-      property_id: deal.property_id,
-      client_id: deal.client_id,
-      final_price: deal.final_price,
-      deal_type: deal.deal_type,
-      status: deal.status,
-      date: deal.created_at,
-      property_type: deal.Property?.property_type,
-      location: deal.Property?.location,
-      client_name: deal.Client?.client_name,
-    };
-
-    res.json(formattedDeal);
+    res.json(deal);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

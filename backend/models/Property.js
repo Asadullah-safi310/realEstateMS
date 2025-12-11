@@ -7,10 +7,6 @@ const Property = sequelize.define('Property', {
     primaryKey: true,
     autoIncrement: true,
   },
-  owner_id: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-  },
   property_type: {
     type: DataTypes.STRING(50),
     allowNull: false,

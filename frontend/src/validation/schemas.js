@@ -7,8 +7,16 @@ export const ownerSchema = Yup.object({
   address: Yup.string(),
 });
 
+export const personSchema = Yup.object({
+  full_name: Yup.string().required('Full name is required'),
+  phone: Yup.string().required('Phone is required'),
+  email: Yup.string().email('Invalid email'),
+  national_id: Yup.string(),
+  address: Yup.string(),
+});
+
 export const propertySchema = Yup.object({
-  owner_id: Yup.number().required('Owner is required'),
+  person_id: Yup.number().required('Owner is required'),
   property_type: Yup.string().required('Property type is required'),
   purpose: Yup.string().required('Purpose is required'),
   price: Yup.number().required('Price is required').positive(),
@@ -33,8 +41,12 @@ export const clientSchema = Yup.object({
 });
 
 export const dealSchema = Yup.object({
+  deal_type: Yup.string().required('Deal type is required').oneOf(['SALE', 'RENT']),
   property_id: Yup.number().required('Property is required'),
-  client_id: Yup.number().required('Client is required'),
-  final_price: Yup.number().required('Final price is required').positive(),
-  deal_type: Yup.string().required('Deal type is required'),
+  owner_id: Yup.number().required('Current owner is required'),
+  buyer_id: Yup.number().required('Buyer/Tenant is required'),
+  tenant_id: Yup.number().nullable(),
+  price: Yup.number().positive('Price must be positive'),
+  start_date: Yup.date().nullable(),
+  notes: Yup.string(),
 });

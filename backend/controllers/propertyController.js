@@ -1,5 +1,7 @@
 const { validationResult } = require('express-validator');
-const { Property, Deal } = require('../models');
+const { Property, Deal, Person, PersonPropertyRole } = require('../models');
+const { sequelize } = require('../config/db');
+const { Op } = require('sequelize');
 const path = require('path');
 
 const createProperty = async (req, res) => {
@@ -8,10 +10,18 @@ const createProperty = async (req, res) => {
     return res.status(400).json({ errors: errors.array() });
   }
 
+  const transaction = await sequelize.transaction();
+
   try {
-    const { owner_id, property_type, purpose, price, location, city, area_size, bedrooms, bathrooms, description, latitude, longitude } = req.body;
-    await Property.create({
-      owner_id,
+    const { person_id, property_type, purpose, price, location, city, area_size, bedrooms, bathrooms, description, latitude, longitude } = req.body;
+
+    const person = await Person.findByPk(person_id, { transaction });
+    if (!person) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Person not found' });
+    }
+
+    const property = await Property.create({
       property_type,
       purpose,
       price,
@@ -23,17 +33,49 @@ const createProperty = async (req, res) => {
       description,
       latitude: latitude || null,
       longitude: longitude || null,
-    });
-    res.status(201).json({ message: 'Property created successfully' });
+      status: 'available',
+    }, { transaction });
+
+    await PersonPropertyRole.create({
+      person_id,
+      property_id: property.property_id,
+      role: 'OWNER',
+      start_date: new Date(),
+    }, { transaction });
+
+    await transaction.commit();
+    res.status(201).json({ message: 'Property created successfully', property_id: property.property_id });
   } catch (error) {
+    await transaction.rollback();
     res.status(500).json({ error: error.message });
   }
 };
 
 const getProperties = async (req, res) => {
   try {
-    const properties = await Property.findAll();
-    res.json(properties);
+    const properties = await Property.findAll({
+      include: [
+        {
+          model: PersonPropertyRole,
+          as: 'PersonPropertyRoles',
+          include: [
+            { model: Person, as: 'Person', attributes: ['person_id', 'full_name', 'phone'] },
+          ],
+        },
+      ],
+    });
+
+    const enrichedProperties = properties.map(prop => {
+      const currentOwner = prop.PersonPropertyRoles?.find(r => r.role === 'OWNER' && !r.end_date);
+      const currentTenant = prop.PersonPropertyRoles?.find(r => r.role === 'TENANT' && !r.end_date);
+      return {
+        ...prop.toJSON(),
+        current_owner: currentOwner || null,
+        current_tenant: currentTenant || null,
+      };
+    });
+
+    res.json(enrichedProperties);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -42,13 +84,32 @@ const getProperties = async (req, res) => {
 const getPropertyById = async (req, res) => {
   try {
     const { id } = req.params;
-    const property = await Property.findByPk(id);
+    const property = await Property.findByPk(id, {
+      include: [
+        {
+          model: PersonPropertyRole,
+          as: 'PersonPropertyRoles',
+          include: [
+            { model: Person, as: 'Person', attributes: ['person_id', 'full_name', 'phone', 'email', 'address'] },
+          ],
+        },
+      ],
+    });
 
     if (!property) {
       return res.status(404).json({ error: 'Property not found' });
     }
 
-    res.json(property);
+    const currentOwner = property.PersonPropertyRoles?.find(r => r.role === 'OWNER' && !r.end_date);
+    const currentTenant = property.PersonPropertyRoles?.find(r => r.role === 'TENANT' && !r.end_date);
+
+    const enrichedProperty = {
+      ...property.toJSON(),
+      current_owner: currentOwner || null,
+      current_tenant: currentTenant || null,
+    };
+
+    res.json(enrichedProperty);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -66,8 +127,8 @@ const searchProperties = async (req, res) => {
     if (status) where.status = status;
     if (min_price || max_price) {
       where.price = {};
-      if (min_price) where.price[require('sequelize').Op.gte] = min_price;
-      if (max_price) where.price[require('sequelize').Op.lte] = max_price;
+      if (min_price) where.price[Op.gte] = min_price;
+      if (max_price) where.price[Op.lte] = max_price;
     }
 
     const properties = await Property.findAll({ where });
@@ -85,7 +146,7 @@ const updateProperty = async (req, res) => {
 
   try {
     const { id } = req.params;
-    const { owner_id, property_type, purpose, price, location, city, area_size, bedrooms, bathrooms, description, latitude, longitude } = req.body;
+    const { property_type, purpose, price, location, city, area_size, bedrooms, bathrooms, description, latitude, longitude } = req.body;
 
     const property = await Property.findByPk(id);
     if (!property) {
@@ -93,7 +154,6 @@ const updateProperty = async (req, res) => {
     }
 
     await property.update({
-      owner_id,
       property_type,
       purpose,
       price,

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
@@ -7,14 +7,27 @@ import ImageCarousel from '../components/ImageCarousel';
 import useViewPreference from '../hooks/useViewPreference';
 import useTranslation from '../hooks/useTranslation';
 import { showSuccess, showError } from '../utils/toast';
+import { MoreVertical } from 'lucide-react';
 
 const PropertyList = observer(() => {
   const navigate = useNavigate();
   const { viewType, toggleView } = useViewPreference('properties');
   const { t } = useTranslation();
+  const [openMenu, setOpenMenu] = useState(null);
 
   useEffect(() => {
     PropertyStore.fetchProperties();
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('[data-action-menu]')) {
+        setOpenMenu(null);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
   const handleDelete = async (id) => {
@@ -27,6 +40,57 @@ const PropertyList = observer(() => {
       }
     }
   };
+
+  const ActionMenu = ({ propertyId }) => (
+    <div className="relative z-20" data-action-menu>
+      <button
+        onClick={() => setOpenMenu(openMenu === propertyId ? null : propertyId)}
+        className="p-1 text-gray-600 hover:text-gray-900"
+      >
+        <MoreVertical size={18} />
+      </button>
+      {openMenu === propertyId && (
+        <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded shadow-lg z-50">
+          <button
+            onClick={() => {
+              navigate(`/property-details/${propertyId}`);
+              setOpenMenu(null);
+            }}
+            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 font-medium"
+          >
+            📋 Details & History
+          </button>
+          <button
+            onClick={() => {
+              navigate('/create-deal', { state: { propertyId } });
+              setOpenMenu(null);
+            }}
+            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 font-medium"
+          >
+            🔄 Transfer Ownership
+          </button>
+          <button
+            onClick={() => {
+              navigate(`/properties/${propertyId}`);
+              setOpenMenu(null);
+            }}
+            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 font-medium"
+          >
+            ✏️ Edit
+          </button>
+          <button
+            onClick={() => {
+              handleDelete(propertyId);
+              setOpenMenu(null);
+            }}
+            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-medium"
+          >
+            🗑️ Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <MainLayout>
@@ -65,7 +129,7 @@ const PropertyList = observer(() => {
         {PropertyStore.loading ? (
           <p>{t('common.loading')}</p>
         ) : viewType === 'list' ? (
-          <div className="bg-white shadow-md rounded overflow-hidden">
+          <div className="bg-white shadow-md rounded overflow-visible">
             <table className="w-full text-sm">
               <thead className="bg-gray-200">
                 <tr>
@@ -121,9 +185,8 @@ const PropertyList = observer(() => {
                         {property.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
-                      <button onClick={() => navigate(`/properties/${property.property_id}`)} className="text-blue-600 hover:underline mr-2">Edit</button>
-                      <button onClick={() => handleDelete(property.property_id)} className="text-red-600 hover:underline">Delete</button>
+                    <td className="px-4 py-3 relative">
+                      <ActionMenu propertyId={property.property_id} />
                     </td>
                   </tr>
                 ))}
@@ -191,17 +254,20 @@ const PropertyList = observer(() => {
 
                   <div className="flex gap-2">
                     <button
-                      onClick={() => navigate(`/properties/${property.property_id}`)}
+                      onClick={() => navigate(`/property-details/${property.property_id}`)}
                       className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-semibold transition"
                     >
-                      Edit
+                      Details
                     </button>
                     <button
-                      onClick={() => handleDelete(property.property_id)}
-                      className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm font-semibold transition"
+                      onClick={() => navigate('/create-deal', { state: { propertyId: property.property_id } })}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm font-semibold transition"
                     >
-                      Delete
+                      Transfer
                     </button>
+                    <div className="relative">
+                      <ActionMenu propertyId={property.property_id} />
+                    </div>
                   </div>
                 </div>
               </div>

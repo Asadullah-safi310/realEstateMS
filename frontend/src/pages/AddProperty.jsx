@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
+import { observer } from 'mobx-react-lite';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import MainLayout from '../layouts/MainLayout';
 import PropertyStore from '../stores/PropertyStore';
-import OwnerStore from '../stores/OwnerStore';
+import PersonStore from '../stores/PersonStore';
 import { propertySchema } from '../validation/schemas';
 import useTranslation from '../hooks/useTranslation';
 import { showSuccess, showError } from '../utils/toast';
 
-const AddProperty = () => {
+const AddProperty = observer(() => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { t } = useTranslation();
@@ -16,7 +17,7 @@ const AddProperty = () => {
   const [uploadedPhotos, setUploadedPhotos] = useState([]);
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [initialValues, setInitialValues] = useState({
-    owner_id: '',
+    person_id: '',
     property_type: '',
     purpose: '',
     price: '',
@@ -31,7 +32,7 @@ const AddProperty = () => {
   });
 
   useEffect(() => {
-    OwnerStore.fetchOwners();
+    PersonStore.fetchPersons();
     if (id) {
       loadProperty(id);
     }
@@ -41,7 +42,7 @@ const AddProperty = () => {
     const property = await PropertyStore.fetchPropertyById(propertyId);
     if (property) {
       setInitialValues({
-        owner_id: property.owner_id || '',
+        person_id: property.current_owner?.Person?.person_id || '',
         property_type: property.property_type || '',
         purpose: property.purpose || '',
         price: property.price ? parseFloat(property.price) : '',
@@ -122,14 +123,14 @@ const AddProperty = () => {
             {({ isSubmitting }) => (
               <Form>
                 <div className="mb-4">
-                  <label htmlFor="owner_id" className="block text-gray-700 text-sm font-semibold mb-2">{t('properties.owner')}</label>
-                  <Field as="select" name="owner_id" className="w-full px-3 py-2 border border-gray-300 rounded">
+                  <label htmlFor="person_id" className="block text-gray-700 text-sm font-semibold mb-2">{t('properties.owner')}</label>
+                  <Field as="select" name="person_id" className="w-full px-3 py-2 border border-gray-300 rounded">
                     <option value="">Select Owner</option>
-                    {OwnerStore.owners.map(owner => (
-                      <option key={owner.owner_id} value={owner.owner_id}>{owner.owner_name}</option>
+                    {PersonStore.persons.map(person => (
+                      <option key={person.person_id} value={person.person_id}>{person.full_name} ({person.phone})</option>
                     ))}
                   </Field>
-                  <ErrorMessage name="owner_id" component="div" className="text-red-600 text-sm mt-1" />
+                  <ErrorMessage name="person_id" component="div" className="text-red-600 text-sm mt-1" />
                 </div>
 
                 <div className="mb-4">
@@ -283,6 +284,6 @@ const AddProperty = () => {
       </div>
     </MainLayout>
   );
-};
+});
 
 export default AddProperty;

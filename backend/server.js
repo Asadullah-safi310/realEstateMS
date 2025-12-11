@@ -8,6 +8,8 @@ const ownerRoutes = require('./routes/ownerRoutes');
 const propertyRoutes = require('./routes/propertyRoutes');
 const clientRoutes = require('./routes/clientRoutes');
 const dealRoutes = require('./routes/dealRoutes');
+const personRoutes = require('./routes/personRoutes');
+const personPropertyRoleRoutes = require('./routes/personPropertyRoleRoutes');
 
 const app = express();
 const path = require('path');
@@ -22,6 +24,8 @@ app.use('/api/owners', ownerRoutes);
 app.use('/api/properties', propertyRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/deals', dealRoutes);
+app.use('/api/persons', personRoutes);
+app.use('/api/person-property-roles', personPropertyRoleRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ message: 'Server is running' });
