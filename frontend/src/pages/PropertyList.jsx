@@ -41,7 +41,7 @@ const PropertyList = observer(() => {
     }
   };
 
-  const ActionMenu = ({ propertyId }) => (
+  const ActionMenu = ({ propertyId, isGridView }) => (
     <div className="relative z-20" data-action-menu>
       <button
         onClick={() => setOpenMenu(openMenu === propertyId ? null : propertyId)}
@@ -50,7 +50,7 @@ const PropertyList = observer(() => {
         <MoreVertical size={18} />
       </button>
       {openMenu === propertyId && (
-        <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded shadow-lg z-50">
+        <div className={`absolute ${isGridView ? 'bottom-full mb-2' : 'top-full mt-2'} right-0 w-48 bg-white border border-gray-200 rounded shadow-lg z-50`}>
           <button
             onClick={() => {
               navigate(`/property-details/${propertyId}`);
@@ -107,7 +107,7 @@ const PropertyList = observer(() => {
                     : 'bg-transparent text-gray-700 hover:bg-gray-300'
                 }`}
               >
-                ☰ {t('common.search')}
+                ☰ List
               </button>
               <button
                 onClick={() => toggleView('card')}
@@ -186,7 +186,7 @@ const PropertyList = observer(() => {
                       </span>
                     </td>
                     <td className="px-4 py-3 relative">
-                      <ActionMenu propertyId={property.property_id} />
+                      <ActionMenu propertyId={property.property_id} isGridView={false} />
                     </td>
                   </tr>
                 ))}
@@ -196,18 +196,18 @@ const PropertyList = observer(() => {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {PropertyStore.properties.map(property => (
-              <div key={property.property_id} className="bg-white shadow-md rounded overflow-hidden hover:shadow-lg transition">
+              <div key={property.property_id} className="bg-white shadow-md rounded overflow-hidden hover:shadow-lg transition flex flex-col">
                 <ImageCarousel images={property.photos || []} title="Property Photos" />
 
-                <div className="p-4">
+                <div className="p-4 flex-grow flex flex-col">
                   <div className="flex justify-between items-start mb-3">
-                    <div>
+                    <div className="flex-grow">
                       <h3 className="text-lg font-bold text-gray-800">
                         {property.property_type.charAt(0).toUpperCase() + property.property_type.slice(1)}
                       </h3>
                       <p className="text-sm text-gray-600">{property.location}, {property.city}</p>
                     </div>
-                    <span className={`px-3 py-1 rounded text-white text-xs font-semibold ${
+                    <span className={`px-3 py-1 rounded text-white text-xs font-semibold whitespace-nowrap ${
                       property.status === 'available' ? 'bg-green-500' :
                       property.status === 'sold' ? 'bg-red-500' :
                       'bg-blue-500'
@@ -252,7 +252,7 @@ const PropertyList = observer(() => {
                     )}
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 mt-auto">
                     <button
                       onClick={() => navigate(`/property-details/${property.property_id}`)}
                       className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-semibold transition"
@@ -266,7 +266,7 @@ const PropertyList = observer(() => {
                       Transfer
                     </button>
                     <div className="relative">
-                      <ActionMenu propertyId={property.property_id} />
+                      <ActionMenu propertyId={property.property_id} isGridView={true} />
                     </div>
                   </div>
                 </div>
