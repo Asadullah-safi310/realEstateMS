@@ -59,7 +59,7 @@ const getPersonById = async (req, res) => {
           model: PersonPropertyRole,
           as: 'PersonPropertyRoles',
           include: [
-            { model: Property, as: 'Property', attributes: ['property_id', 'property_type', 'location', 'city', 'price'] },
+            { model: Property, as: 'Property', attributes: ['property_id', 'property_type', 'location', 'city', 'sale_price', 'rent_price'] },
           ],
         },
       ],

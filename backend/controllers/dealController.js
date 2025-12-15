@@ -26,6 +26,10 @@ const createDeal = async (req, res) => {
     }
 
     if (deal_type === 'SALE') {
+      if (!Boolean(property.is_available_for_sale)) {
+        await transaction.rollback();
+        return res.status(400).json({ error: 'This property is not available for sale' });
+      }
       if (!buyer_id) {
         await transaction.rollback();
         return res.status(400).json({ error: 'Buyer ID is required for SALE deal' });
@@ -73,11 +77,30 @@ const createDeal = async (req, res) => {
         await currentTenantRole.update({ end_date: new Date() }, { transaction });
       }
 
-      await Property.update(
-        { status: 'sold' },
+      console.log('Before SALE Property.update - Property ID:', property_id);
+      console.log('Before SALE - Current property:', {
+        property_id: property.property_id,
+        is_available_for_sale: property.is_available_for_sale,
+        status: property.status
+      });
+      
+      const saleUpdateResult = await Property.update(
+        { status: 'sold', is_available_for_sale: 0 },
         { where: { property_id }, transaction }
       );
+      console.log('SALE Property.update result:', saleUpdateResult);
+      
+      const updatedProperty = await Property.findByPk(property_id, { transaction });
+      console.log('After SALE update - Property data:', {
+        property_id: updatedProperty.property_id,
+        is_available_for_sale: updatedProperty.is_available_for_sale,
+        status: updatedProperty.status
+      });
     } else if (deal_type === 'RENT') {
+      if (!Boolean(property.is_available_for_rent)) {
+        await transaction.rollback();
+        return res.status(400).json({ error: 'This property is not available for rent' });
+      }
       if (!buyer_id) {
         await transaction.rollback();
         return res.status(400).json({ error: 'Tenant ID is required for RENT deal' });
@@ -122,17 +145,50 @@ const createDeal = async (req, res) => {
         start_date: new Date(),
       }, { transaction });
 
-      await Property.update(
-        { status: 'rented' },
+      console.log('Before RENT Property.update - Property ID:', property_id);
+      console.log('Before RENT - Current property:', {
+        property_id: property.property_id,
+        is_available_for_rent: property.is_available_for_rent,
+        status: property.status
+      });
+      
+      const rentUpdateResult = await Property.update(
+        { status: 'rented', is_available_for_rent: 0 },
         { where: { property_id }, transaction }
       );
+      console.log('RENT Property.update result:', rentUpdateResult);
+      
+      const updatedProperty = await Property.findByPk(property_id, { transaction });
+      console.log('After RENT update - Property data:', {
+        property_id: updatedProperty.property_id,
+        is_available_for_rent: updatedProperty.is_available_for_rent,
+        status: updatedProperty.status
+      });
     } else {
       await transaction.rollback();
       return res.status(400).json({ error: 'Invalid deal type. Must be SALE or RENT' });
     }
 
     await transaction.commit();
-    res.status(201).json({ message: `${deal_type} deal created successfully and property updated` });
+    console.log('Transaction committed successfully');
+    
+    const finalProperty = await Property.findByPk(property_id);
+    console.log('Final property state:', {
+      property_id: finalProperty.property_id,
+      is_available_for_sale: finalProperty.is_available_for_sale,
+      is_available_for_rent: finalProperty.is_available_for_rent,
+      status: finalProperty.status
+    });
+    
+    res.status(201).json({ 
+      message: `${deal_type} deal created successfully and property updated`,
+      property: {
+        property_id: finalProperty.property_id,
+        is_available_for_sale: Boolean(finalProperty.is_available_for_sale),
+        is_available_for_rent: Boolean(finalProperty.is_available_for_rent),
+        status: finalProperty.status
+      }
+    });
   } catch (error) {
     await transaction.rollback();
     res.status(500).json({ error: error.message });
@@ -143,7 +199,7 @@ const getDeals = async (req, res) => {
   try {
     const deals = await Deal.findAll({
       include: [
-        { model: Property, as: 'DealProperty', attributes: ['property_id', 'property_type', 'location', 'city', 'price'] },
+        { model: Property, as: 'DealProperty', attributes: ['property_id', 'property_type', 'location', 'city', 'sale_price', 'rent_price'] },
         { model: Person, as: 'Owner', attributes: ['person_id', 'full_name', 'phone'] },
         { model: Person, as: 'Buyer', attributes: ['person_id', 'full_name', 'phone'] },
         { model: Person, as: 'Tenant', attributes: ['person_id', 'full_name', 'phone'] },
@@ -162,7 +218,7 @@ const getDealById = async (req, res) => {
     const { id } = req.params;
     const deal = await Deal.findByPk(id, {
       include: [
-        { model: Property, as: 'DealProperty', attributes: ['property_id', 'property_type', 'location', 'city', 'price', 'status'] },
+        { model: Property, as: 'DealProperty', attributes: ['property_id', 'property_type', 'location', 'city', 'sale_price', 'rent_price', 'status'] },
         { model: Person, as: 'Owner', attributes: ['person_id', 'full_name', 'phone', 'email'] },
         { model: Person, as: 'Buyer', attributes: ['person_id', 'full_name', 'phone', 'email'] },
         { model: Person, as: 'Tenant', attributes: ['person_id', 'full_name', 'phone', 'email'] },

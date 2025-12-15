@@ -47,15 +47,21 @@ const AddOwner = () => {
   }, [id]);
 
   const loadPerson = async (personId) => {
-    const person = await PersonStore.fetchPersonById(personId);
-    if (person) {
-      setInitialValues({
-        full_name: person.full_name || '',
-        phone: person.phone || '',
-        email: person.email || '',
-        national_id: person.national_id || '',
-        address: person.address || '',
-      });
+    try {
+      const person = await PersonStore.fetchPersonById(personId);
+      if (person) {
+        setInitialValues({
+          full_name: person.full_name || '',
+          phone: person.phone || '',
+          email: person.email || '',
+          national_id: person.national_id || '',
+          address: person.address || '',
+        });
+      } else {
+        showError('Failed to load person data');
+      }
+    } catch (error) {
+      showError('Error loading person: ' + error.message);
     }
   };
 

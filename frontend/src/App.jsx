@@ -11,6 +11,7 @@ import PropertyList from './pages/PropertyList';
 import AddProperty from './pages/AddProperty';
 import SearchProperties from './pages/SearchProperties';
 import PropertyDetails from './pages/PropertyDetails';
+import PersonDetails from './pages/PersonDetails';
 import ClientList from './pages/ClientList';
 import AddClient from './pages/AddClient';
 import DealList from './pages/DealList';
@@ -28,6 +29,7 @@ function App() {
         <Route path="/owners" element={<OwnerList />} />
         <Route path="/owners/add" element={<AddOwner />} />
         <Route path="/owners/:id" element={<AddOwner />} />
+        <Route path="/person-details/:id" element={<PersonDetails />} />
         
         <Route path="/properties" element={<PropertyList />} />
         <Route path="/properties/add" element={<AddProperty />} />

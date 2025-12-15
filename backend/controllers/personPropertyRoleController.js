@@ -60,7 +60,7 @@ const getRolesByPerson = async (req, res) => {
     const roles = await PersonPropertyRole.findAll({
       where: { person_id },
       include: [
-        { model: Property, as: 'Property', attributes: ['property_id', 'property_type', 'location', 'city', 'price', 'status'] },
+        { model: Property, as: 'Property', attributes: ['property_id', 'property_type', 'location', 'city', 'sale_price', 'rent_price', 'status'] },
       ],
     });
 

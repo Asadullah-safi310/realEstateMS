@@ -15,9 +15,13 @@ const Property = sequelize.define('Property', {
     type: DataTypes.STRING(20),
     allowNull: false,
   },
-  price: {
+  sale_price: {
     type: DataTypes.DECIMAL(18, 2),
-    allowNull: false,
+    allowNull: true,
+  },
+  rent_price: {
+    type: DataTypes.DECIMAL(18, 2),
+    allowNull: true,
   },
   location: {
     type: DataTypes.STRING(255),
@@ -61,9 +65,34 @@ const Property = sequelize.define('Property', {
     defaultValue: [],
     comment: 'Array of attachment file paths',
   },
+  videos: {
+    type: DataTypes.JSON,
+    defaultValue: [],
+    comment: 'Array of video URLs (uploaded or external)',
+  },
   status: {
     type: DataTypes.STRING(20),
     defaultValue: 'available',
+  },
+  is_available_for_sale: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+  is_available_for_rent: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+  is_photo_available: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+  is_attachment_available: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+  },
+  is_video_available: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
   },
 }, {
   tableName: 'properties',

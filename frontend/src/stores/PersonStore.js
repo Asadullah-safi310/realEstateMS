@@ -27,9 +27,11 @@ class PersonStore {
     this.loading = true;
     try {
       const response = await axiosInstance.get(`/persons/${id}`);
+      this.error = null;
       return response.data;
     } catch (error) {
-      this.error = error.message;
+      this.error = error.response?.data?.message || error.response?.data?.error || error.message;
+      return null;
     } finally {
       this.loading = false;
     }

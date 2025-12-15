@@ -13,6 +13,7 @@ const SearchProperties = observer(() => {
     max_price: '',
     bedrooms: '',
     status: '',
+    availability: '',
   });
 
   const handleFilterChange = (e) => {
@@ -93,6 +94,16 @@ const SearchProperties = observer(() => {
                 <option value="rented">Rented</option>
               </select>
             </div>
+
+            <div>
+              <label className="block text-gray-700 text-sm font-semibold mb-2">Availability</label>
+              <select name="availability" value={filters.availability} onChange={handleFilterChange} className="w-full px-3 py-2 border border-gray-300 rounded">
+                <option value="">All Availability</option>
+                <option value="sale">For Sale Only</option>
+                <option value="rent">For Rent Only</option>
+                <option value="both">Sale & Rent</option>
+              </select>
+            </div>
           </div>
 
           <button onClick={handleSearch} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">
@@ -106,7 +117,18 @@ const SearchProperties = observer(() => {
           <p className="text-center text-gray-500 py-8">No properties found matching your search criteria.</p>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {PropertyStore.properties.map(property => (
+            {PropertyStore.properties.map(property => {
+              const getAvailabilityBadges = (prop) => {
+                const badges = [];
+                if (Boolean(prop?.is_available_for_sale)) badges.push({ icon: '🟢', text: 'For Sale', color: 'bg-green-100 text-green-800' });
+                if (Boolean(prop?.is_available_for_rent)) badges.push({ icon: '🔵', text: 'For Rent', color: 'bg-blue-100 text-blue-800' });
+                if (badges.length === 2) {
+                  return [{ icon: '🟣', text: 'Sale & Rent', color: 'bg-purple-100 text-purple-800' }];
+                }
+                return badges;
+              };
+
+              return (
               <div key={property.property_id} className="bg-white shadow-md rounded overflow-hidden hover:shadow-lg transition">
                 <ImageCarousel images={property.photos || []} title="Property Photos" />
 
@@ -125,6 +147,14 @@ const SearchProperties = observer(() => {
                     }`}>
                       {property.status}
                     </span>
+                  </div>
+
+                  <div className="flex gap-2 flex-wrap mb-3">
+                    {getAvailabilityBadges(property).map((badge, idx) => (
+                      <span key={idx} className={`text-xs px-2 py-1 rounded font-semibold ${badge.color}`}>
+                        {badge.icon} {badge.text}
+                      </span>
+                    ))}
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
@@ -162,7 +192,8 @@ const SearchProperties = observer(() => {
                   )}
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
       </div>
