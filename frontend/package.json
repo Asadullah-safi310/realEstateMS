@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "main": "index.js",
+  "homepage": "https://github.com/Asadullah-safi310/realEstateMS.git",
   "scripts": {
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
