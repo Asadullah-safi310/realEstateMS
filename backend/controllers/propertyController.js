@@ -1,5 +1,5 @@
 const { validationResult } = require('express-validator');
-const { Property, Deal, Person, PersonPropertyRole } = require('../models');
+const { Property, Deal, User } = require('../models');
 const { sequelize } = require('../config/db');
 const { Op } = require('sequelize');
 const path = require('path');
@@ -13,20 +13,26 @@ const createProperty = async (req, res) => {
   const transaction = await sequelize.transaction();
 
   try {
-    const { person_id, property_type, purpose, sale_price, rent_price, location, city, area_size, bedrooms, bathrooms, description, latitude, longitude, is_available_for_sale, is_available_for_rent, is_photo_available, is_attachment_available, is_video_available, videos } = req.body;
+    const { person_id, property_type, purpose, sale_price, rent_price, location, address, province_id, district_id, area_id, city, area_size, bedrooms, bathrooms, description, latitude, longitude, is_available_for_sale, is_available_for_rent, is_photo_available, is_attachment_available, is_video_available, videos, visibility } = req.body;
 
-    const person = await Person.findByPk(person_id, { transaction });
-    if (!person) {
+    // person_id is passed as owner_id
+    const owner = await User.findByPk(person_id, { transaction });
+    if (!owner) {
       await transaction.rollback();
-      return res.status(404).json({ error: 'Person not found' });
+      return res.status(404).json({ error: 'Owner (User) not found' });
     }
 
     const property = await Property.create({
+      owner_id: person_id,
       property_type,
       purpose,
       sale_price: sale_price || null,
       rent_price: rent_price || null,
       location,
+      address,
+      province_id: province_id || null,
+      district_id: district_id || null,
+      area_id: area_id || null,
       city,
       area_size,
       bedrooms,
@@ -35,19 +41,13 @@ const createProperty = async (req, res) => {
       latitude: latitude || null,
       longitude: longitude || null,
       status: 'available',
+      visibility: visibility || 'PRIVATE',
       is_available_for_sale: is_available_for_sale === true || is_available_for_sale === 'true' ? true : false,
       is_available_for_rent: is_available_for_rent === true || is_available_for_rent === 'true' ? true : false,
       is_photo_available: is_photo_available === true || is_photo_available === 'true' ? true : false,
       is_attachment_available: is_attachment_available === true || is_attachment_available === 'true' ? true : false,
       is_video_available: is_video_available === true || is_video_available === 'true' ? true : false,
       videos: Array.isArray(videos) ? videos : [],
-    }, { transaction });
-
-    await PersonPropertyRole.create({
-      person_id,
-      property_id: property.property_id,
-      role: 'OWNER',
-      start_date: new Date(),
     }, { transaction });
 
     await transaction.commit();
@@ -62,24 +62,15 @@ const getProperties = async (req, res) => {
   try {
     const properties = await Property.findAll({
       include: [
-        {
-          model: PersonPropertyRole,
-          as: 'PersonPropertyRoles',
-          include: [
-            { model: Person, as: 'Person', attributes: ['person_id', 'full_name', 'phone'] },
-          ],
-        },
+        { model: User, as: 'Owner', attributes: ['user_id', 'full_name', 'phone'] },
       ],
     });
 
     const enrichedProperties = properties.map(prop => {
-      const currentOwner = prop.PersonPropertyRoles?.find(r => r.role === 'OWNER' && !r.end_date);
-      const currentTenant = prop.PersonPropertyRoles?.find(r => r.role === 'TENANT' && !r.end_date);
       const propJson = prop.toJSON();
       return {
         ...propJson,
-        current_owner: currentOwner || null,
-        current_tenant: currentTenant || null,
+        current_owner: propJson.Owner,
         is_available_for_sale: Boolean(propJson.is_available_for_sale),
         is_available_for_rent: Boolean(propJson.is_available_for_rent),
         is_photo_available: Boolean(propJson.is_photo_available),
@@ -99,13 +90,7 @@ const getPropertyById = async (req, res) => {
     const { id } = req.params;
     const property = await Property.findByPk(id, {
       include: [
-        {
-          model: PersonPropertyRole,
-          as: 'PersonPropertyRoles',
-          include: [
-            { model: Person, as: 'Person', attributes: ['person_id', 'full_name', 'phone', 'email', 'address'] },
-          ],
-        },
+        { model: User, as: 'Owner', attributes: ['user_id', 'full_name', 'phone', 'email', 'address'] },
       ],
     });
 
@@ -113,14 +98,10 @@ const getPropertyById = async (req, res) => {
       return res.status(404).json({ error: 'Property not found' });
     }
 
-    const currentOwner = property.PersonPropertyRoles?.find(r => r.role === 'OWNER' && !r.end_date);
-    const currentTenant = property.PersonPropertyRoles?.find(r => r.role === 'TENANT' && !r.end_date);
-
     const propJson = property.toJSON();
     const enrichedProperty = {
       ...propJson,
-      current_owner: currentOwner || null,
-      current_tenant: currentTenant || null,
+      current_owner: propJson.Owner,
       is_available_for_sale: Boolean(propJson.is_available_for_sale),
       is_available_for_rent: Boolean(propJson.is_available_for_rent),
       is_photo_available: Boolean(propJson.is_photo_available),
@@ -136,7 +117,7 @@ const getPropertyById = async (req, res) => {
 
 const searchProperties = async (req, res) => {
   try {
-    const { city, property_type, purpose, min_sale_price, max_sale_price, min_rent_price, max_rent_price, bedrooms, status, availability } = req.query;
+    const { city, property_type, purpose, min_sale_price, max_sale_price, min_rent_price, max_rent_price, bedrooms, status, availability, visibility } = req.query;
     const where = {};
 
     if (city) where.city = city;
@@ -144,6 +125,7 @@ const searchProperties = async (req, res) => {
     if (purpose) where.purpose = purpose;
     if (bedrooms) where.bedrooms = bedrooms;
     if (status) where.status = status;
+    if (visibility) where.visibility = visibility;
     
     if (min_sale_price || max_sale_price) {
       where.sale_price = {};
@@ -168,7 +150,12 @@ const searchProperties = async (req, res) => {
       ];
     }
 
-    const properties = await Property.findAll({ where });
+    const properties = await Property.findAll({ 
+      where,
+      include: [
+        { model: User, as: 'Owner', attributes: ['user_id', 'full_name', 'phone'] },
+      ]
+    });
     res.json(properties);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -183,11 +170,16 @@ const updateProperty = async (req, res) => {
 
   try {
     const { id } = req.params;
-    const { property_type, purpose, sale_price, rent_price, location, city, area_size, bedrooms, bathrooms, description, latitude, longitude, is_available_for_sale, is_available_for_rent, is_photo_available, is_attachment_available, is_video_available } = req.body;
+    const { property_type, purpose, sale_price, rent_price, location, address, province_id, district_id, area_id, city, area_size, bedrooms, bathrooms, description, latitude, longitude, is_available_for_sale, is_available_for_rent, is_photo_available, is_attachment_available, is_video_available, visibility } = req.body;
 
     const property = await Property.findByPk(id);
     if (!property) {
       return res.status(404).json({ error: 'Property not found' });
+    }
+
+    // Check ownership
+    if (req.user && req.user.user_id !== property.owner_id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Not authorized to update this property' });
     }
 
     await property.update({
@@ -196,6 +188,10 @@ const updateProperty = async (req, res) => {
       sale_price: sale_price || null,
       rent_price: rent_price || null,
       location,
+      address,
+      province_id: province_id || null,
+      district_id: district_id || null,
+      area_id: area_id || null,
       city,
       area_size,
       bedrooms,
@@ -203,6 +199,7 @@ const updateProperty = async (req, res) => {
       description,
       latitude: latitude || null,
       longitude: longitude || null,
+      visibility: visibility || property.visibility,
       is_available_for_sale: is_available_for_sale === true || is_available_for_sale === 'true' ? true : false,
       is_available_for_rent: is_available_for_rent === true || is_available_for_rent === 'true' ? true : false,
       is_photo_available: is_photo_available === true || is_photo_available === 'true' ? true : false,
@@ -242,6 +239,11 @@ const deleteProperty = async (req, res) => {
       return res.status(404).json({ error: 'Property not found' });
     }
 
+    // Check ownership
+    if (req.user && req.user.user_id !== property.owner_id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Not authorized to delete this property' });
+    }
+
     const dealCount = await Deal.count({ where: { property_id: id } });
     if (dealCount > 0) {
       return res.status(400).json({ error: 'Cannot delete property with existing deals' });
@@ -261,6 +263,11 @@ const uploadFiles = async (req, res) => {
     const property = await Property.findByPk(id);
     if (!property) {
       return res.status(404).json({ error: 'Property not found' });
+    }
+
+    // Check ownership
+    if (req.user && req.user.user_id !== property.owner_id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Not authorized to upload files to this property' });
     }
 
     const photos = [];
@@ -319,6 +326,11 @@ const deleteFile = async (req, res) => {
       return res.status(404).json({ error: 'Property not found' });
     }
 
+    // Check ownership
+    if (req.user && req.user.user_id !== property.owner_id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Not authorized to delete files from this property' });
+    }
+
     if (type === 'photo') {
       property.photos = Array.isArray(property.photos)
         ? property.photos.filter(f => f !== fileUrl)
@@ -360,24 +372,15 @@ const getAvailableProperties = async (req, res) => {
     const properties = await Property.findAll({
       where,
       include: [
-        {
-          model: PersonPropertyRole,
-          as: 'PersonPropertyRoles',
-          include: [
-            { model: Person, as: 'Person', attributes: ['person_id', 'full_name', 'phone'] },
-          ],
-        },
+        { model: User, as: 'Owner', attributes: ['user_id', 'full_name', 'phone'] },
       ],
     });
 
     const enrichedProperties = properties.map(prop => {
-      const currentOwner = prop.PersonPropertyRoles?.find(r => r.role === 'OWNER' && !r.end_date);
-      const currentTenant = prop.PersonPropertyRoles?.find(r => r.role === 'TENANT' && !r.end_date);
       const propJson = prop.toJSON();
       return {
         ...propJson,
-        current_owner: currentOwner || null,
-        current_tenant: currentTenant || null,
+        current_owner: propJson.Owner,
         is_available_for_sale: Boolean(propJson.is_available_for_sale),
         is_available_for_rent: Boolean(propJson.is_available_for_rent),
       };
@@ -394,32 +397,13 @@ const getPropertiesByOwner = async (req, res) => {
     const { id } = req.params;
 
     const properties = await Property.findAll({
+      where: { owner_id: id },
       include: [
-        {
-          model: PersonPropertyRole,
-          as: 'PersonPropertyRoles',
-          where: { person_id: id, role: 'OWNER', end_date: null },
-          include: [
-            { model: Person, as: 'Person', attributes: ['person_id', 'full_name', 'phone'] },
-          ],
-        },
+        { model: User, as: 'Owner', attributes: ['user_id', 'full_name', 'phone'] },
       ],
     });
 
-    const enrichedProperties = properties.map(prop => {
-      const currentOwner = prop.PersonPropertyRoles?.find(r => r.role === 'OWNER' && !r.end_date);
-      const currentTenant = prop.PersonPropertyRoles?.find(r => r.role === 'TENANT' && !r.end_date);
-      const propJson = prop.toJSON();
-      return {
-        ...propJson,
-        current_owner: currentOwner || null,
-        current_tenant: currentTenant || null,
-        is_available_for_sale: Boolean(propJson.is_available_for_sale),
-        is_available_for_rent: Boolean(propJson.is_available_for_rent),
-      };
-    });
-
-    res.json(enrichedProperties);
+    res.json(properties);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -429,33 +413,25 @@ const getPropertiesByTenant = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const properties = await Property.findAll({
+    const deals = await Deal.findAll({
+      where: {
+        buyer_id: id,
+        deal_type: 'RENT',
+      },
       include: [
         {
-          model: PersonPropertyRole,
-          as: 'PersonPropertyRoles',
-          where: { person_id: id, role: 'TENANT', end_date: null },
+          model: Property,
+          as: 'Property',
           include: [
-            { model: Person, as: 'Person', attributes: ['person_id', 'full_name', 'phone'] },
+            { model: User, as: 'Owner', attributes: ['user_id', 'full_name', 'phone'] },
           ],
         },
       ],
     });
 
-    const enrichedProperties = properties.map(prop => {
-      const currentOwner = prop.PersonPropertyRoles?.find(r => r.role === 'OWNER' && !r.end_date);
-      const currentTenant = prop.PersonPropertyRoles?.find(r => r.role === 'TENANT' && !r.end_date);
-      const propJson = prop.toJSON();
-      return {
-        ...propJson,
-        current_owner: currentOwner || null,
-        current_tenant: currentTenant || null,
-        is_available_for_sale: Boolean(propJson.is_available_for_sale),
-        is_available_for_rent: Boolean(propJson.is_available_for_rent),
-      };
-    });
+    const properties = deals.map(deal => deal.Property).filter(prop => prop);
 
-    res.json(enrichedProperties);
+    res.json(properties);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -464,25 +440,27 @@ const getPropertiesByTenant = async (req, res) => {
 const updatePropertyAvailability = async (req, res) => {
   try {
     const { id } = req.params;
-    const { dealType } = req.body;
+    const { is_available_for_sale, is_available_for_rent } = req.body;
 
     const property = await Property.findByPk(id);
     if (!property) {
       return res.status(404).json({ error: 'Property not found' });
     }
 
-    if (dealType === 'SALE') {
-      await property.update({ is_available_for_sale: false });
-    } else if (dealType === 'RENT') {
-      await property.update({ is_available_for_rent: false });
-    } else {
-      return res.status(400).json({ error: 'Invalid deal type. Must be SALE or RENT' });
-    }
+    const updateData = {};
+    if (is_available_for_sale !== undefined) updateData.is_available_for_sale = is_available_for_sale;
+    if (is_available_for_rent !== undefined) updateData.is_available_for_rent = is_available_for_rent;
 
-    res.json({ message: 'Property availability updated successfully', property });
+    await property.update(updateData);
+    res.json({ message: 'Property availability updated successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+};
+
+const getMyProperties = async (req, res) => {
+  req.params.id = req.user.user_id;
+  return getPropertiesByOwner(req, res);
 };
 
 module.exports = {
@@ -499,4 +477,5 @@ module.exports = {
   getPropertiesByOwner,
   getPropertiesByTenant,
   updatePropertyAvailability,
+  getMyProperties,
 };

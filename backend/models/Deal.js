@@ -17,7 +17,7 @@ const Deal = sequelize.define('Deal', {
   },
   owner_id: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     comment: 'Current owner before the deal',
   },
   buyer_id: {
@@ -38,13 +38,21 @@ const Deal = sequelize.define('Deal', {
     type: DataTypes.DATE,
     allowNull: true,
   },
+  end_date: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
   notes: {
     type: DataTypes.TEXT,
     allowNull: true,
   },
   status: {
-    type: DataTypes.STRING(20),
-    defaultValue: 'completed',
+    type: DataTypes.ENUM('PENDING', 'COMPLETED', 'CANCELLED'),
+    defaultValue: 'PENDING',
+  },
+  deal_completed_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
   },
 }, {
   tableName: 'deals',

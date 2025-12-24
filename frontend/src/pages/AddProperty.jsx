@@ -9,6 +9,7 @@ import { propertySchema } from "../validation/schemas";
 import useTranslation from "../hooks/useTranslation";
 import { showSuccess, showError } from "../utils/toast";
 import ConfirmDialog from "../components/ConfirmDialog";
+import LocationPicker from "../components/LocationPicker";
 
 const AddProperty = observer(() => {
   const navigate = useNavigate();
@@ -477,6 +478,17 @@ const AddProperty = observer(() => {
                   <p className="text-xs text-gray-600 mt-2">
                     Select which media types are available for this property
                   </p>
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-gray-700 text-sm font-semibold mb-2">
+                    Location Map
+                  </label>
+                  <LocationPicker 
+                    setFieldValue={setFieldValue}
+                    values={values}
+                    apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-4">

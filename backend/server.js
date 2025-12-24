@@ -1,31 +1,42 @@
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
 const { initDB } = require('./config/db');
 require('./models');
 
-const ownerRoutes = require('./routes/ownerRoutes');
-const propertyRoutes = require('./routes/propertyRoutes');
-const clientRoutes = require('./routes/clientRoutes');
-const dealRoutes = require('./routes/dealRoutes');
+const authRoutes = require('./routes/authRoutes');
+const publicPropertyRoutes = require('./routes/public/propertyRoutes');
+const protectedPropertyRoutes = require('./routes/protected/propertyRoutes');
+const protectedDealRoutes = require('./routes/protected/dealRoutes');
+const protectedProfileRoutes = require('./routes/protected/profileRoutes');
 const personRoutes = require('./routes/personRoutes');
-const personPropertyRoleRoutes = require('./routes/personPropertyRoleRoutes');
+const locationRoutes = require('./routes/locationRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const { protect } = require('./middleware/authMiddleware');
 
 const app = express();
 const path = require('path');
 
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:3000', // Adjust if frontend port differs
+  credentials: true,
+}));
 app.use(express.json());
+app.use(cookieParser());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 initDB();
 
-app.use('/api/owners', ownerRoutes);
-app.use('/api/properties', propertyRoutes);
-app.use('/api/clients', clientRoutes);
-app.use('/api/deals', dealRoutes);
-app.use('/api/persons', personRoutes);
-app.use('/api/person-property-roles', personPropertyRoleRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/public/properties', publicPropertyRoutes);
+app.use('/api/properties', protect, protectedPropertyRoutes);
+app.use('/api/deals', protect, protectedDealRoutes);
+app.use('/api/profile', protect, protectedProfileRoutes);
+app.use('/api/persons', personRoutes); // Renamed to Users internally but keeping route for now
+app.use('/api/locations', locationRoutes);
+app.use('/api/admin', adminRoutes);
+
 
 app.get('/api/health', (req, res) => {
   res.json({ message: 'Server is running' });

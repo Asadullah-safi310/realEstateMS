@@ -1,20 +1,58 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { observer } from 'mobx-react-lite';
-import MainLayout from '../layouts/MainLayout';
-import PropertyStore from '../stores/PropertyStore';
-import ImageCarousel from '../components/ImageCarousel';
+import { Filter, Search, Loader2 } from 'lucide-react';
+import PropertyCard from '../components/public/PropertyCard';
+import PropertyMap from '../components/PropertyMap';
+import axiosInstance from '../api/axiosInstance';
 
 const SearchProperties = observer(() => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [properties, setProperties] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showMap, setShowMap] = useState(false);
   const [filters, setFilters] = useState({
-    city: '',
-    property_type: '',
-    purpose: '',
+    city: searchParams.get('city') || '',
+    property_type: searchParams.get('property_type') || '',
+    purpose: searchParams.get('purpose') || '',
     min_price: '',
     max_price: '',
     bedrooms: '',
-    status: '',
+    status: 'available',
     availability: '',
   });
+
+  useEffect(() => {
+    // Update filters from URL params on mount/change
+    setFilters(prev => ({
+      ...prev,
+      city: searchParams.get('city') || '',
+      property_type: searchParams.get('property_type') || '',
+      purpose: searchParams.get('purpose') || '',
+    }));
+  }, [searchParams]);
+
+  const fetchProperties = async () => {
+    setLoading(true);
+    try {
+      const cleanFilters = Object.fromEntries(
+        Object.entries(filters).filter(([, v]) => v !== '')
+      );
+      
+      // Convert filters to query string
+      const params = new URLSearchParams(cleanFilters);
+      const response = await axiosInstance.get(`/public/properties/search?${params.toString()}`);
+      setProperties(response.data);
+    } catch (error) {
+      console.error('Search failed', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProperties();
+  }, [searchParams]); // Re-fetch when URL params change
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -24,180 +62,164 @@ const SearchProperties = observer(() => {
     }));
   };
 
-  const handleSearch = async () => {
+  const handleSearch = (e) => {
+    e.preventDefault();
+    // Update URL with new filters
     const cleanFilters = Object.fromEntries(
       Object.entries(filters).filter(([, v]) => v !== '')
     );
-    await PropertyStore.searchProperties(cleanFilters);
+    setSearchParams(cleanFilters);
   };
 
   return (
-    <MainLayout>
-      <div>
-        <h1 className="text-3xl font-bold mb-8">Search Properties</h1>
-
-        <div className="bg-white shadow-md rounded p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-            <div>
-              <label className="block text-gray-700 text-sm font-semibold mb-2">City</label>
-              <input
-                type="text"
-                name="city"
-                value={filters.city}
-                onChange={handleFilterChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded"
-                placeholder="Enter city"
-              />
-            </div>
-
-            <div>
-              <label className="block text-gray-700 text-sm font-semibold mb-2">Property Type</label>
-              <select name="property_type" value={filters.property_type} onChange={handleFilterChange} className="w-full px-3 py-2 border border-gray-300 rounded">
-                <option value="">All Types</option>
-                <option value="plot">Plot</option>
-                <option value="house">House</option>
-                <option value="flat">Flat</option>
-                <option value="shop">Shop</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-gray-700 text-sm font-semibold mb-2">Purpose</label>
-              <select name="purpose" value={filters.purpose} onChange={handleFilterChange} className="w-full px-3 py-2 border border-gray-300 rounded">
-                <option value="">All</option>
-                <option value="rent">Rent</option>
-                <option value="sale">Sale</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-gray-700 text-sm font-semibold mb-2">Min Price</label>
-              <input type="number" name="min_price" value={filters.min_price} onChange={handleFilterChange} className="w-full px-3 py-2 border border-gray-300 rounded" />
-            </div>
-
-            <div>
-              <label className="block text-gray-700 text-sm font-semibold mb-2">Max Price</label>
-              <input type="number" name="max_price" value={filters.max_price} onChange={handleFilterChange} className="w-full px-3 py-2 border border-gray-300 rounded" />
-            </div>
-
-            <div>
-              <label className="block text-gray-700 text-sm font-semibold mb-2">Bedrooms</label>
-              <input type="number" name="bedrooms" value={filters.bedrooms} onChange={handleFilterChange} className="w-full px-3 py-2 border border-gray-300 rounded" />
-            </div>
-
-            <div>
-              <label className="block text-gray-700 text-sm font-semibold mb-2">Status</label>
-              <select name="status" value={filters.status} onChange={handleFilterChange} className="w-full px-3 py-2 border border-gray-300 rounded">
-                <option value="">All</option>
-                <option value="available">Available</option>
-                <option value="sold">Sold</option>
-                <option value="rented">Rented</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-gray-700 text-sm font-semibold mb-2">Availability</label>
-              <select name="availability" value={filters.availability} onChange={handleFilterChange} className="w-full px-3 py-2 border border-gray-300 rounded">
-                <option value="">All Availability</option>
-                <option value="sale">For Sale Only</option>
-                <option value="rent">For Rent Only</option>
-                <option value="both">Sale & Rent</option>
-              </select>
-            </div>
-          </div>
-
-          <button onClick={handleSearch} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">
-            Search
-          </button>
-        </div>
-
-        {PropertyStore.loading ? (
-          <p>Loading...</p>
-        ) : PropertyStore.properties.length === 0 ? (
-          <p className="text-center text-gray-500 py-8">No properties found matching your search criteria.</p>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {PropertyStore.properties.map(property => {
-              const getAvailabilityBadges = (prop) => {
-                const badges = [];
-                if (Boolean(prop?.is_available_for_sale)) badges.push({ icon: '🟢', text: 'For Sale', color: 'bg-green-100 text-green-800' });
-                if (Boolean(prop?.is_available_for_rent)) badges.push({ icon: '🔵', text: 'For Rent', color: 'bg-blue-100 text-blue-800' });
-                if (badges.length === 2) {
-                  return [{ icon: '🟣', text: 'Sale & Rent', color: 'bg-purple-100 text-purple-800' }];
-                }
-                return badges;
-              };
-
-              return (
-              <div key={property.property_id} className="bg-white shadow-md rounded overflow-hidden hover:shadow-lg transition">
-                <ImageCarousel images={property.photos || []} title="Property Photos" />
-
-                <div className="p-4">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-800">
-                        {property.property_type.charAt(0).toUpperCase() + property.property_type.slice(1)}
-                      </h3>
-                      <p className="text-sm text-gray-600">{property.location}, {property.city}</p>
-                    </div>
-                    <span className={`px-3 py-1 rounded text-white text-xs font-semibold ${
-                      property.status === 'available' ? 'bg-green-500' :
-                      property.status === 'sold' ? 'bg-red-500' :
-                      'bg-blue-500'
-                    }`}>
-                      {property.status}
-                    </span>
-                  </div>
-
-                  <div className="flex gap-2 flex-wrap mb-3">
-                    {getAvailabilityBadges(property).map((badge, idx) => (
-                      <span key={idx} className={`text-xs px-2 py-1 rounded font-semibold ${badge.color}`}>
-                        {badge.icon} {badge.text}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
-                    <div>
-                      <p className="text-gray-600">Purpose</p>
-                      <p className="font-semibold text-gray-800">{property.purpose}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-600">Price</p>
-                      <p className="font-semibold text-gray-800">Rs {property.price}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-600">Area</p>
-                      <p className="font-semibold text-gray-800">{property.area_size}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-600">Bedrooms</p>
-                      <p className="font-semibold text-gray-800">{property.bedrooms || 'N/A'}</p>
-                    </div>
-                  </div>
-
-                  {property.description && (
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">{property.description}</p>
-                  )}
-
-                  {property.latitude && property.longitude && (
-                    <a
-                      href={`https://www.google.com/maps/?q=${property.latitude},${property.longitude}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-block text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1 rounded transition mb-4"
-                    >
-                      📍 View Map
-                    </a>
-                  )}
-                </div>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col lg:flex-row gap-8">
+          
+          {/* Filters Sidebar */}
+          <div className="w-full lg:w-1/4">
+            <div className="bg-white rounded-2xl shadow-sm p-6 sticky top-24">
+              <div className="flex items-center gap-2 mb-6">
+                <Filter size={20} className="text-blue-600" />
+                <h2 className="text-lg font-bold text-gray-900">Filters</h2>
               </div>
-            );
-            })}
+
+              <form onSubmit={handleSearch} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                  <input
+                    type="text"
+                    name="city"
+                    value={filters.city}
+                    onChange={handleFilterChange}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    placeholder="Enter city"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Property Type</label>
+                  <select 
+                    name="property_type" 
+                    value={filters.property_type} 
+                    onChange={handleFilterChange} 
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  >
+                    <option value="">All Types</option>
+                    <option value="House">House</option>
+                    <option value="Apartment">Apartment</option>
+                    <option value="Villa">Villa</option>
+                    <option value="Commercial">Commercial</option>
+                    <option value="Land">Land</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
+                  <select 
+                    name="purpose" 
+                    value={filters.purpose} 
+                    onChange={handleFilterChange} 
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  >
+                    <option value="">All</option>
+                    <option value="SALE">For Sale</option>
+                    <option value="RENT">For Rent</option>
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Min Price</label>
+                    <input 
+                      type="number" 
+                      name="min_price" 
+                      value={filters.min_price} 
+                      onChange={handleFilterChange} 
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                      placeholder="Min"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Max Price</label>
+                    <input 
+                      type="number" 
+                      name="max_price" 
+                      value={filters.max_price} 
+                      onChange={handleFilterChange} 
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                      placeholder="Max"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Bedrooms</label>
+                  <input 
+                    type="number" 
+                    name="bedrooms" 
+                    value={filters.bedrooms} 
+                    onChange={handleFilterChange} 
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                  />
+                </div>
+
+                <button 
+                  type="submit" 
+                  className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Search size={18} /> Apply Filters
+                </button>
+              </form>
+            </div>
           </div>
-        )}
+
+          {/* Results Grid */}
+          <div className="w-full lg:w-3/4">
+            <div className="mb-6 flex justify-between items-end">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {loading ? 'Searching...' : `${properties.length} Properties Found`}
+                </h1>
+                {filters.city && <p className="text-gray-600">in {filters.city}</p>}
+              </div>
+              <button
+                onClick={() => setShowMap(!showMap)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+              >
+                {showMap ? 'Show List' : 'Show Map'}
+              </button>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center items-center h-64">
+                <Loader2 size={40} className="animate-spin text-blue-600" />
+              </div>
+            ) : showMap ? (
+              <PropertyMap 
+                properties={properties} 
+                apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY} 
+              />
+            ) : properties.length === 0 ? (
+              <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Search size={32} className="text-gray-400" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">No properties found</h3>
+                <p className="text-gray-600">Try adjusting your filters to find what you're looking for.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {properties.map(property => (
+                  <PropertyCard key={property.property_id} property={property} />
+                ))}
+              </div>
+            )}
+          </div>
+
+        </div>
       </div>
-    </MainLayout>
+    </div>
   );
 });
 

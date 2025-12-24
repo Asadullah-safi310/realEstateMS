@@ -1,7 +1,7 @@
 const express = require('express');
 const { body } = require('express-validator');
 const router = express.Router();
-const { createDeal, getDeals, getDealById } = require('../controllers/dealController');
+const { createDeal, getDealsByUser, getDealById } = require('../../controllers/dealController');
 
 router.post('/', [
   body('property_id').notEmpty().isInt().withMessage('Property ID is required and must be an integer'),
@@ -13,7 +13,7 @@ router.post('/', [
   body('notes').optional(),
 ], createDeal);
 
-router.get('/', getDeals);
+router.get('/', getDealsByUser);
 
 router.get('/:id', getDealById);
 

@@ -1,29 +1,48 @@
-const Owner = require('./Owner');
+const User = require('./User');
 const Property = require('./Property');
-const Client = require('./Client');
 const Deal = require('./Deal');
-const Person = require('./Person');
-const PersonPropertyRole = require('./PersonPropertyRole');
+const PropertyHistory = require('./PropertyHistory');
+const Province = require('./Province');
+const District = require('./District');
+const Area = require('./Area');
+
+// Property Associations
+Property.belongsTo(User, { foreignKey: 'owner_id', as: 'Owner', onDelete: 'CASCADE' });
+User.hasMany(Property, { foreignKey: 'owner_id' });
 
 Property.hasMany(Deal, { foreignKey: 'property_id', onDelete: 'CASCADE' });
 Deal.belongsTo(Property, { foreignKey: 'property_id', as: 'Property' });
 
-Person.hasMany(PersonPropertyRole, { foreignKey: 'person_id', onDelete: 'CASCADE', as: 'PersonPropertyRoles' });
-PersonPropertyRole.belongsTo(Person, { foreignKey: 'person_id', as: 'Person' });
+Property.hasMany(PropertyHistory, { foreignKey: 'property_id', onDelete: 'CASCADE' });
+PropertyHistory.belongsTo(Property, { foreignKey: 'property_id', as: 'Property' });
 
-Property.hasMany(PersonPropertyRole, { foreignKey: 'property_id', onDelete: 'CASCADE', as: 'PersonPropertyRoles' });
-PersonPropertyRole.belongsTo(Property, { foreignKey: 'property_id', as: 'Property' });
+// Location Associations
+Province.hasMany(District, { foreignKey: 'province_id', as: 'Districts', onDelete: 'CASCADE' });
+District.belongsTo(Province, { foreignKey: 'province_id', as: 'Province' });
 
-Deal.belongsTo(Person, { foreignKey: 'owner_id', as: 'Owner' });
-Deal.belongsTo(Person, { foreignKey: 'buyer_id', as: 'Buyer' });
-Deal.belongsTo(Person, { foreignKey: 'tenant_id', as: 'Tenant' });
-Deal.belongsTo(Property, { foreignKey: 'property_id', as: 'DealProperty' });
+District.hasMany(Area, { foreignKey: 'district_id', as: 'Areas', onDelete: 'CASCADE' });
+Area.belongsTo(District, { foreignKey: 'district_id', as: 'District' });
+
+// Property Location Associations
+Property.belongsTo(Province, { foreignKey: 'province_id', as: 'ProvinceData' });
+Property.belongsTo(District, { foreignKey: 'district_id', as: 'DistrictData' });
+Property.belongsTo(Area, { foreignKey: 'area_id', as: 'AreaData' });
+
+// Deal Associations
+Deal.belongsTo(User, { foreignKey: 'owner_id', as: 'Owner', onDelete: 'CASCADE' });
+Deal.belongsTo(User, { foreignKey: 'buyer_id', as: 'Buyer', onDelete: 'SET NULL' });
+Deal.belongsTo(User, { foreignKey: 'tenant_id', as: 'Tenant', onDelete: 'SET NULL' });
+
+// Property History Associations
+PropertyHistory.belongsTo(User, { foreignKey: 'previous_owner_id', as: 'PreviousOwner' });
+PropertyHistory.belongsTo(User, { foreignKey: 'new_owner_id', as: 'NewOwner' });
 
 module.exports = {
-  Owner,
+  User,
   Property,
-  Client,
   Deal,
-  Person,
-  PersonPropertyRole,
+  PropertyHistory,
+  Province,
+  District,
+  Area,
 };

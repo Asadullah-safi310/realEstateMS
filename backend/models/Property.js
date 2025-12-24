@@ -7,6 +7,14 @@ const Property = sequelize.define('Property', {
     primaryKey: true,
     autoIncrement: true,
   },
+  owner_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  visibility: {
+    type: DataTypes.ENUM('PRIVATE', 'DRAFT', 'PUBLIC'),
+    defaultValue: 'PRIVATE',
+  },
   property_type: {
     type: DataTypes.STRING(50),
     allowNull: false,
@@ -23,13 +31,42 @@ const Property = sequelize.define('Property', {
     type: DataTypes.DECIMAL(18, 2),
     allowNull: true,
   },
+  province_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'provinces',
+      key: 'id',
+    },
+  },
+  district_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'districts',
+      key: 'id',
+    },
+  },
+  area_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'areas',
+      key: 'id',
+    },
+  },
+  address: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: 'Full formatted address from Google Maps',
+  },
   location: {
     type: DataTypes.STRING(255),
-    allowNull: false,
+    allowNull: true, // Legacy field, kept for backward compatibility or manual entry
   },
   city: {
     type: DataTypes.STRING(100),
-    allowNull: false,
+    allowNull: true, // Changed to true as we move to structured location
   },
   area_size: {
     type: DataTypes.STRING(50),

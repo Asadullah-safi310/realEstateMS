@@ -41,8 +41,48 @@ export const propertySchema = Yup.object({
   bedrooms: Yup.number(),
   bathrooms: Yup.number(),
   description: Yup.string(),
-  latitude: Yup.number().typeError('Latitude must be a number').nullable(),
-  longitude: Yup.number().typeError('Longitude must be a number').nullable(),
+  latitude: Yup.number().required('Please select a location on the map').typeError('Latitude must be a number'),
+  longitude: Yup.number().required('Please select a location on the map').typeError('Longitude must be a number'),
+  is_available_for_sale: Yup.boolean(),
+  is_available_for_rent: Yup.boolean(),
+  is_photo_available: Yup.boolean(),
+  is_attachment_available: Yup.boolean(),
+  is_video_available: Yup.boolean(),
+  videos: Yup.array(),
+}).test('at-least-one-availability', 'At least one availability option must be selected', function(value) {
+  return value.is_available_for_sale || value.is_available_for_rent;
+});
+
+export const userPropertySchema = Yup.object({
+  property_type: Yup.string().required('Property type is required'),
+  purpose: Yup.string().required('Purpose is required'),
+  sale_price: Yup.number()
+    .typeError('Sale price must be a number')
+    .nullable()
+    .when('is_available_for_sale', {
+      is: true,
+      then: (schema) => schema.required('Sale price is required when available for sale').positive('Sale price must be positive'),
+      otherwise: (schema) => schema.nullable(),
+    }),
+  rent_price: Yup.number()
+    .typeError('Rent price must be a number')
+    .nullable()
+    .when('is_available_for_rent', {
+      is: true,
+      then: (schema) => schema.required('Rent price is required when available for rent').positive('Rent price must be positive'),
+      otherwise: (schema) => schema.nullable(),
+    }),
+  province_id: Yup.number().required('Province is required'),
+  district_id: Yup.number().required('District is required'),
+  area_id: Yup.number().required('Area is required'),
+  location: Yup.string(),
+  city: Yup.string(),
+  area_size: Yup.string().required('Area size is required'),
+  bedrooms: Yup.number(),
+  bathrooms: Yup.number(),
+  description: Yup.string(),
+  latitude: Yup.number().required('Please select a location on the map').typeError('Latitude must be a number'),
+  longitude: Yup.number().required('Please select a location on the map').typeError('Longitude must be a number'),
   is_available_for_sale: Yup.boolean(),
   is_available_for_rent: Yup.boolean(),
   is_photo_available: Yup.boolean(),

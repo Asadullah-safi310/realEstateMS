@@ -1,5 +1,5 @@
 const { validationResult } = require('express-validator');
-const { Person, PersonPropertyRole, Property } = require('../models');
+const { User, Property } = require('../models');
 const { sequelize } = require('../config/db');
 
 const createPerson = async (req, res) => {
@@ -11,17 +11,21 @@ const createPerson = async (req, res) => {
   try {
     const { full_name, phone, email, national_id, address } = req.body;
 
-    const existingPerson = await Person.findOne({ where: { phone } });
+    const existingPerson = await User.findOne({ where: { phone } });
     if (existingPerson) {
-      return res.status(400).json({ error: 'Person with this phone already exists' });
+      return res.status(400).json({ error: 'User with this phone already exists' });
     }
 
-    const person = await Person.create({
+    // Create User with default password '123456' and username from email or phone
+    const username = email ? email.split('@')[0] : phone;
+    const person = await User.create({
+      username,
       full_name,
       phone,
       email,
       national_id,
       address,
+      password_hash: '123456', // Default password
     });
 
     res.status(201).json(person);
@@ -32,14 +36,13 @@ const createPerson = async (req, res) => {
 
 const getPersons = async (req, res) => {
   try {
-    const persons = await Person.findAll({
+    const persons = await User.findAll({
+      attributes: { exclude: ['password_hash'] },
       include: [
         {
-          model: PersonPropertyRole,
-          as: 'PersonPropertyRoles',
-          include: [
-            { model: Property, as: 'Property', attributes: ['property_id', 'property_type', 'location'] },
-          ],
+          model: Property,
+          as: 'Properties', // Assuming User.hasMany(Property) is aliased as Properties or default
+          attributes: ['property_id', 'property_type', 'location'],
         },
       ],
     });
@@ -53,20 +56,19 @@ const getPersons = async (req, res) => {
 const getPersonById = async (req, res) => {
   try {
     const { id } = req.params;
-    const person = await Person.findByPk(id, {
+    const person = await User.findByPk(id, {
+      attributes: { exclude: ['password_hash'] },
       include: [
         {
-          model: PersonPropertyRole,
-          as: 'PersonPropertyRoles',
-          include: [
-            { model: Property, as: 'Property', attributes: ['property_id', 'property_type', 'location', 'city', 'sale_price', 'rent_price'] },
-          ],
+          model: Property,
+          as: 'Properties',
+          attributes: ['property_id', 'property_type', 'location', 'city', 'sale_price', 'rent_price'],
         },
       ],
     });
 
     if (!person) {
-      return res.status(404).json({ error: 'Person not found' });
+      return res.status(404).json({ error: 'User not found' });
     }
 
     res.json(person);
@@ -85,15 +87,15 @@ const updatePerson = async (req, res) => {
     const { id } = req.params;
     const { full_name, phone, email, national_id, address } = req.body;
 
-    const person = await Person.findByPk(id);
+    const person = await User.findByPk(id);
     if (!person) {
-      return res.status(404).json({ error: 'Person not found' });
+      return res.status(404).json({ error: 'User not found' });
     }
 
     if (phone !== person.phone) {
-      const existingPerson = await Person.findOne({ where: { phone } });
+      const existingPerson = await User.findOne({ where: { phone } });
       if (existingPerson) {
-        return res.status(400).json({ error: 'Person with this phone already exists' });
+        return res.status(400).json({ error: 'User with this phone already exists' });
       }
     }
 
@@ -117,30 +119,41 @@ const deletePerson = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const person = await Person.findByPk(id, { transaction });
+    const person = await User.findByPk(id, { transaction });
     if (!person) {
       await transaction.rollback();
-      return res.status(404).json({ error: 'Person not found' });
+      return res.status(404).json({ error: 'User not found' });
     }
 
-    const roles = await PersonPropertyRole.findAll({
-      where: { person_id: id },
+    // Check if user owns properties
+    const properties = await Property.findAll({
+      where: { owner_id: id },
       transaction,
     });
 
-    if (roles.length > 0) {
+    if (properties.length > 0) {
       await transaction.rollback();
-      return res.status(400).json({ error: 'Cannot delete person with property roles. Remove roles first.' });
+      return res.status(400).json({ error: 'Cannot delete user who owns properties. Transfer or delete properties first.' });
     }
 
     await person.destroy({ transaction });
     await transaction.commit();
 
-    res.json({ message: 'Person deleted successfully' });
+    res.json({ message: 'User deleted successfully' });
   } catch (error) {
     await transaction.rollback();
     res.status(500).json({ error: error.message });
   }
+};
+
+const getProfile = async (req, res) => {
+  req.params.id = req.user.user_id;
+  return getPersonById(req, res);
+};
+
+const updateProfile = async (req, res) => {
+  req.params.id = req.user.user_id;
+  return updatePerson(req, res);
 };
 
 module.exports = {
@@ -149,4 +162,6 @@ module.exports = {
   getPersonById,
   updatePerson,
   deletePerson,
+  getProfile,
+  updateProfile,
 };
