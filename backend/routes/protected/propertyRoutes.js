@@ -10,19 +10,16 @@ const {
   deleteFile, 
   getPropertiesByTenant, 
   updatePropertyAvailability,
-  getMyProperties
+  getMyProperties,
+  getPropertyById
 } = require('../../controllers/propertyController');
 const { upload } = require('../../utils/upload');
 
 router.get('/', getMyProperties);
+router.get('/my-properties', getMyProperties);
+router.get('/:id', getPropertyById); // Add this route to fetch single property for editing
 
 router.post('/', [
-  (req, res, next) => {
-    if (req.user) {
-      req.body.person_id = req.user.user_id;
-    }
-    next();
-  },
   body('property_type').notEmpty().withMessage('Property type is required'),
   body('purpose').notEmpty().withMessage('Purpose is required'),
   body('province_id').notEmpty().withMessage('Province is required'),

@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useOutletContext } from 'react-router-dom';
+import { useParams, useOutletContext, Link, useNavigate } from 'react-router-dom';
 import { observer } from 'mobx-react-lite';
-import { MapPin, Bed, Bath, Square, User, Phone, Mail, Calendar, Share2, Heart, Loader2 } from 'lucide-react';
+import { MapPin, Bed, Bath, Square, User, Phone, Mail, Calendar, Loader2, ArrowLeft } from 'lucide-react';
 import axiosInstance from '../api/axiosInstance';
 import ImageCarousel from '../components/ImageCarousel';
 import authStore from '../stores/AuthStore';
 
 const PublicPropertyDetails = observer(() => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { openLogin } = useOutletContext();
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -49,6 +50,7 @@ const PublicPropertyDetails = observer(() => {
   }
 
   const {
+    property_id,
     property_type,
     purpose,
     sale_price,
@@ -61,6 +63,8 @@ const PublicPropertyDetails = observer(() => {
     description,
     photos,
     current_owner,
+    Agent,
+    Creator,
     created_at
   } = property;
 
@@ -71,11 +75,74 @@ const PublicPropertyDetails = observer(() => {
     maximumFractionDigits: 0
   }).format(price);
 
+  const ProfileSection = ({ title, user, type }) => {
+    if (!user) return null;
+
+    return (
+      <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 mb-6">
+        <h3 className="text-lg font-bold text-gray-900 mb-4">{title}</h3>
+        
+        <div className="flex items-center gap-4 mb-6">
+          <Link 
+            to={`/user/${user.user_id}`}
+            className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-xl overflow-hidden hover:opacity-80 transition-opacity"
+          >
+            {user.profile_picture ? (
+              <img src={user.profile_picture} alt={user.full_name} className="w-full h-full object-cover" />
+            ) : (
+              user.full_name?.charAt(0) || <User size={32} />
+            )}
+          </Link>
+          <div>
+            <Link 
+              to={`/user/${user.user_id}`}
+              className="font-bold text-gray-900 text-lg hover:text-blue-600 transition-colors"
+            >
+              {user.full_name}
+            </Link>
+            <div className="text-gray-500 text-sm">{type}</div>
+          </div>
+        </div>
+
+        {authStore.isAuthenticated ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 text-gray-700 p-2.5 bg-gray-50 rounded-lg text-sm">
+              <Phone size={16} className="text-blue-500" />
+              <span className="font-medium">{user.phone || 'No phone available'}</span>
+            </div>
+            <div className="flex items-center gap-3 text-gray-700 p-2.5 bg-gray-50 rounded-lg text-sm">
+              <Mail size={16} className="text-blue-500" />
+              <span className="font-medium truncate">{user.email || 'No email available'}</span>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center p-4 bg-gray-50 rounded-xl border border-gray-200 border-dashed">
+            <p className="text-xs text-gray-600 mb-2">Log in to view contact details</p>
+            <button 
+              onClick={openLogin}
+              className="text-xs text-blue-600 font-bold hover:underline"
+            >
+              Log In
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
       {/* Header / Breadcrumb could go here */}
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <button 
+          onClick={() => navigate(-1)} 
+          className="flex items-center text-gray-600 hover:text-blue-600 mb-6 transition-colors font-medium"
+        >
+          <ArrowLeft size={20} className="mr-2" />
+          Back
+        </button>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           {/* Left Column: Images & Details */}
@@ -142,59 +209,38 @@ const PublicPropertyDetails = observer(() => {
           </div>
 
           {/* Right Column: Sidebar */}
-          <div className="space-y-8">
-            {/* Owner Card */}
-            <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 sticky top-24">
-              <h3 className="text-lg font-bold text-gray-900 mb-6">Contact Owner</h3>
-              
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-xl">
-                  {current_owner?.full_name?.charAt(0) || <User size={32} />}
-                </div>
-                <div>
-                  <div className="font-bold text-gray-900 text-lg">{current_owner?.full_name || 'Property Owner'}</div>
-                  <div className="text-gray-500 text-sm">Property Owner</div>
+          <div className="space-y-0">
+            {/* Agent Section */}
+            <ProfileSection 
+              title="Listing Agent" 
+              user={Agent} 
+              type="Verified Agent" 
+            />
+
+            {/* Creator Section */}
+            <ProfileSection 
+              title="Property Creator" 
+              user={Creator} 
+              type="Listing Source" 
+            />
+
+            {/* Internal Information (Visible to Agents/Admins only) */}
+            {authStore.isAuthenticated && (authStore.user?.role === 'agent' || authStore.user?.role === 'admin') && (
+              <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+                <h4 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wider flex items-center gap-2">
+                  <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
+                  Internal Details
+                </h4>
+                <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                  <div className="text-[10px] text-gray-400 text-center">
+                    Listing ID: #{property_id}
+                  </div>
+                  <div className="text-[10px] text-gray-400 text-center">
+                    Database ID: {property.property_id}
+                  </div>
                 </div>
               </div>
-
-              {authStore.isAuthenticated ? (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 text-gray-700 p-3 bg-gray-50 rounded-lg">
-                    <Phone size={20} className="text-blue-500" />
-                    <span className="font-medium">{current_owner?.phone || 'No phone available'}</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-gray-700 p-3 bg-gray-50 rounded-lg">
-                    <Mail size={20} className="text-blue-500" />
-                    <span className="font-medium">{current_owner?.email || 'No email available'}</span>
-                  </div>
-                  <button className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20">
-                    Send Message
-                  </button>
-                </div>
-              ) : (
-                <div className="text-center p-6 bg-gray-50 rounded-xl border border-gray-200 border-dashed">
-                  <div className="mb-3 text-gray-500">
-                    <User size={32} className="mx-auto opacity-50" />
-                  </div>
-                  <p className="text-gray-600 mb-4 font-medium">Log in to view contact details</p>
-                  <button 
-                    onClick={openLogin}
-                    className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                  >
-                    Log In to View
-                  </button>
-                </div>
-              )}
-
-              <div className="mt-6 pt-6 border-t border-gray-100 flex gap-4">
-                <button className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors font-medium">
-                  <Heart size={18} /> Save
-                </button>
-                <button className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors font-medium">
-                  <Share2 size={18} /> Share
-                </button>
-              </div>
-            </div>
+            )}
           </div>
 
         </div>

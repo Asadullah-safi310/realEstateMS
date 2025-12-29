@@ -15,6 +15,7 @@ import AuthenticatedLayout from './layouts/AuthenticatedLayout';
 // Public Pages
 import PublicDashboard from './pages/PublicDashboard';
 import PublicPropertyDetails from './pages/PublicPropertyDetails';
+import PublicUserProfile from './pages/PublicUserProfile';
 import SearchProperties from './pages/SearchProperties';
 
 // Authenticated Pages
@@ -22,6 +23,7 @@ import MyDashboard from './pages/protected/MyDashboard';
 import MyProperties from './pages/protected/MyProperties';
 import AddPropertyProtected from './pages/protected/AddProperty';
 import MyDeals from './pages/protected/MyDeals';
+import DealForm from './pages/protected/DealForm';
 import ProfileManagement from './pages/protected/ProfileManagement';
 
 // Admin Pages
@@ -36,8 +38,8 @@ import AdminSettings from './pages/admin/AdminSettings';
 
 // Legacy Pages (Keep only if needed, otherwise remove)
 import Dashboard from './pages/Dashboard';
-import OwnerList from './pages/OwnerList';
-import AddOwner from './pages/AddOwner';
+import PersonList from './pages/PersonList';
+import AddPerson from './pages/AddPerson';
 import PropertyList from './pages/PropertyList';
 import AddProperty from './pages/AddProperty';
 import PersonDetails from './pages/PersonDetails';
@@ -58,6 +60,16 @@ const RequireAuth = observer(({ children }) => {
   return children;
 });
 
+const RequireAgent = observer(({ children }) => {
+  if (authStore.isLoading) {
+    return <div className="flex h-screen items-center justify-center">Loading...</div>;
+  }
+  if (authStore.user?.role !== 'agent' && authStore.user?.role !== 'admin') {
+    return <Navigate to="/authenticated/dashboard" replace />;
+  }
+  return children;
+});
+
 function App() {
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
@@ -68,6 +80,7 @@ function App() {
           <Route path="/" element={<PublicDashboard />} />
           <Route path="/properties/search" element={<SearchProperties />} />
           <Route path="/properties/:id" element={<PublicPropertyDetails />} />
+          <Route path="/user/:id" element={<PublicUserProfile />} />
         </Route>
 
         {/* Authenticated Routes */}
@@ -82,7 +95,14 @@ function App() {
           <Route path="properties/edit/:id" element={<AddPropertyProtected />} />
           <Route path="favorites" element={<Favorites />} />
           <Route path="deals" element={<MyDeals />} />
+          <Route path="deals/create/:propertyId" element={<DealForm />} />
           <Route path="profile" element={<ProfileManagement />} />
+          
+          {/* Agent only routes */}
+          <Route path="persons" element={<RequireAgent><PersonList /></RequireAgent>} />
+          <Route path="persons/add" element={<RequireAgent><AddPerson /></RequireAgent>} />
+          <Route path="persons/edit/:id" element={<RequireAgent><AddPerson /></RequireAgent>} />
+          <Route path="persons/:id" element={<RequireAgent><PersonDetails /></RequireAgent>} />
         </Route>
 
         {/* Admin Routes */}
@@ -97,27 +117,6 @@ function App() {
           <Route path="locations" element={<AdminLocations />} />
           <Route path="settings" element={<AdminSettings />} />
         </Route>
-
-        {/* Legacy Routes (To be deprecated) */}
-        <Route path="/dashboard" element={<Dashboard />} />
-        
-        <Route path="/owners" element={<OwnerList />} />
-        <Route path="/owners/add" element={<AddOwner />} />
-        <Route path="/owners/:id" element={<AddOwner />} />
-        <Route path="/person-details/:id" element={<PersonDetails />} />
-        
-        <Route path="/admin/properties" element={<PropertyList />} />
-        <Route path="/properties/add" element={<AddProperty />} />
-        <Route path="/properties/edit/:id" element={<AddProperty />} />
-        
-        <Route path="/clients" element={<ClientList />} />
-        <Route path="/clients/add" element={<AddClient />} />
-        
-        <Route path="/deals" element={<DealList />} />
-        <Route path="/deals/add" element={<CreateDeal />} />
-        <Route path="/create-deal" element={<CreateDeal />} />
-        
-        <Route path="/settings" element={<Settings />} />
       </Routes>
     </BrowserRouter>
   );

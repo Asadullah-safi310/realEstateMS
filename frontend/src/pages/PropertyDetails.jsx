@@ -244,8 +244,36 @@ const PropertyDetails = () => {
                     <label className="text-sm text-gray-600 font-medium">Current Owner</label>
                   </div>
                   <div className="bg-blue-50 rounded p-3">
-                    <p className="font-medium text-gray-900">{property.current_owner.Person?.full_name}</p>
-                    <p className="text-sm text-gray-600">{property.current_owner.Person?.phone}</p>
+                    <p className="font-medium text-gray-900">{property.current_owner.Person?.full_name || property.Owner?.full_name}</p>
+                    <p className="text-sm text-gray-600">{property.current_owner.Person?.phone || property.Owner?.phone}</p>
+                  </div>
+                </div>
+              )}
+
+              {property.Creator && (
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <User size={18} className="text-gray-600" />
+                    <label className="text-sm text-gray-600 font-medium">Created By</label>
+                  </div>
+                  <div className="bg-gray-50 rounded p-3 border border-gray-100">
+                    <p className="font-medium text-gray-900">{property.Creator.full_name}</p>
+                    {property.Creator.phone && <p className="text-sm text-gray-600">{property.Creator.phone}</p>}
+                    {property.Creator.email && <p className="text-sm text-gray-600">{property.Creator.email}</p>}
+                    <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider">System User</p>
+                  </div>
+                </div>
+              )}
+
+              {property.Agent && (
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <User size={18} className="text-purple-600" />
+                    <label className="text-sm text-gray-600 font-medium">Assigned Agent</label>
+                  </div>
+                  <div className="bg-purple-50 rounded p-3">
+                    <p className="font-medium text-gray-900">{property.Agent.full_name}</p>
+                    <p className="text-sm text-gray-600">{property.Agent.phone}</p>
                   </div>
                 </div>
               )}

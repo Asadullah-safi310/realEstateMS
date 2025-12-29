@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { observer } from 'mobx-react-lite';
-import { Filter, Search, Loader2 } from 'lucide-react';
+import { Filter, Search, Loader2, ArrowLeft } from 'lucide-react';
 import PropertyCard from '../components/public/PropertyCard';
 import PropertyMap from '../components/PropertyMap';
 import axiosInstance from '../api/axiosInstance';
@@ -35,11 +35,24 @@ const SearchProperties = observer(() => {
   const fetchProperties = async () => {
     setLoading(true);
     try {
+      const queryParams = { ...filters };
+      
+      // Map generic price filters to specific ones based on purpose
+      if (filters.min_price) {
+        if (filters.purpose === 'RENT') queryParams.min_rent_price = filters.min_price;
+        else queryParams.min_sale_price = filters.min_price;
+        delete queryParams.min_price;
+      }
+      if (filters.max_price) {
+        if (filters.purpose === 'RENT') queryParams.max_rent_price = filters.max_price;
+        else queryParams.max_sale_price = filters.max_price;
+        delete queryParams.max_price;
+      }
+
       const cleanFilters = Object.fromEntries(
-        Object.entries(filters).filter(([, v]) => v !== '')
+        Object.entries(queryParams).filter(([, v]) => v !== '')
       );
       
-      // Convert filters to query string
       const params = new URLSearchParams(cleanFilters);
       const response = await axiosInstance.get(`/public/properties/search?${params.toString()}`);
       setProperties(response.data);
@@ -183,12 +196,21 @@ const SearchProperties = observer(() => {
                 </h1>
                 {filters.city && <p className="text-gray-600">in {filters.city}</p>}
               </div>
-              <button
-                onClick={() => setShowMap(!showMap)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-              >
-                {showMap ? 'Show List' : 'Show Map'}
-              </button>
+              <div className="flex gap-2">
+                <Link
+                  to="/"
+                  className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors flex items-center gap-2"
+                >
+                  <ArrowLeft size={18} />
+                  Back
+                </Link>
+                <button
+                  onClick={() => setShowMap(!showMap)}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
+                  {showMap ? 'Show List' : 'Show Map'}
+                </button>
+              </div>
             </div>
 
             {loading ? (

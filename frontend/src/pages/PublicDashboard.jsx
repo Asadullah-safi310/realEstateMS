@@ -13,9 +13,9 @@ const PublicDashboard = () => {
   useEffect(() => {
     const fetchProperties = async () => {
       try {
-        // Fetch latest 6 properties
-        const response = await axiosInstance.get('/public/properties/search?limit=6');
-        setFeaturedProperties(response.data.slice(0, 6));
+        // Fetch latest 6 properties using the clean public endpoint
+        const response = await axiosInstance.get('/public/properties/public?limit=6');
+        setFeaturedProperties(response.data);
       } catch (error) {
         console.error('Failed to fetch properties', error);
       } finally {

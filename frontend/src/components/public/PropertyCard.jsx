@@ -46,7 +46,15 @@ const PropertyCard = observer(({ property }) => {
         />
         
         {/* Badges */}
-        <div className="absolute top-4 left-4 flex gap-2">
+        <div className="absolute top-4 left-4 flex gap-2 items-center z-10">
+          {/* Visibility Indicator (Green Dot) */}
+          {(is_available_for_sale || is_available_for_rent) && (
+            <div 
+              className="w-3 h-3 bg-green-500 border-2 border-white rounded-full shadow-md animate-pulse" 
+              title="Visible on Public Dashboard"
+            ></div>
+          )}
+          
           <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider text-white shadow-sm ${
             purpose === 'SALE' ? 'bg-blue-600' : 'bg-green-600'
           }`}>
@@ -119,6 +127,17 @@ const PropertyCard = observer(({ property }) => {
         </div>
 
         {/* Action */}
+        {(authStore.user?.role === 'agent' && (authStore.user?.user_id === property.agent_id || authStore.user?.user_id === property.created_by_user_id) && (is_available_for_sale || is_available_for_rent)) && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              navigate(`/authenticated/deals/create/${property_id}`);
+            }}
+            className="block w-full text-center py-2.5 mt-2 rounded-xl bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors mb-2 shadow-sm"
+          >
+            Create Deal
+          </button>
+        )}
         <Link 
           to={`/properties/${property_id}`}
           className="block w-full text-center py-2.5 mt-2 rounded-xl bg-gray-50 text-blue-600 font-semibold hover:bg-blue-50 transition-colors"

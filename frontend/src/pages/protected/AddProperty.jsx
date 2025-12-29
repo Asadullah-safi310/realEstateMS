@@ -4,11 +4,13 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import AuthenticatedLayout from "../../layouts/AuthenticatedLayout";
 import PropertyStore from "../../stores/PropertyStore";
+import PersonStore from "../../stores/PersonStore";
 import { userPropertySchema } from "../../validation/schemas";
 import { showSuccess, showError } from "../../utils/toast";
-import { Loader2, Upload, X, Trash2 } from "lucide-react";
+import { Loader2, Upload, X, Trash2, Globe, Lock } from "lucide-react";
 import axiosInstance from "../../api/axiosInstance";
 import LocationPicker from "../../components/LocationPicker";
+import PersonSelect from "../../components/PersonSelect";
 
 const AddProperty = observer(() => {
   const navigate = useNavigate();
@@ -27,20 +29,22 @@ const AddProperty = observer(() => {
   const [initialValues, setInitialValues] = useState({
     property_type: "",
     purpose: "",
-    sale_price: "",
-    rent_price: "",
-    province_id: "",
-    district_id: "",
-    area_id: "",
+    agent_id: null,
+    status: "available",
+    sale_price: null,
+    rent_price: null,
+    province_id: null,
+    district_id: null,
+    area_id: null,
     location: "", // Legacy/Fallback
     address: "", // Google Maps Address
     city: "", // Legacy/Fallback
     area_size: "",
-    bedrooms: "",
-    bathrooms: "",
+    bedrooms: null,
+    bathrooms: null,
     description: "",
-    latitude: "",
-    longitude: "",
+    latitude: null,
+    longitude: null,
     is_available_for_sale: false,
     is_available_for_rent: false,
     is_photo_available: false,
@@ -51,6 +55,7 @@ const AddProperty = observer(() => {
 
   useEffect(() => {
     fetchProvinces();
+    PersonStore.fetchAgents();
     if (id) {
       loadProperty(id);
     }
@@ -101,20 +106,22 @@ const AddProperty = observer(() => {
       setInitialValues({
         property_type: property.property_type || "",
         purpose: property.purpose || "",
-        sale_price: property.sale_price ? parseFloat(property.sale_price) : "",
-        rent_price: property.rent_price ? parseFloat(property.rent_price) : "",
-        province_id: property.province_id || "",
-        district_id: property.district_id || "",
-        area_id: property.area_id || "",
+        agent_id: property.agent_id || null,
+        status: property.status || "available",
+        sale_price: property.sale_price ? parseFloat(property.sale_price) : null,
+        rent_price: property.rent_price ? parseFloat(property.rent_price) : null,
+        province_id: property.province_id || null,
+        district_id: property.district_id || null,
+        area_id: property.area_id || null,
         location: property.location || "",
         address: property.address || "",
         city: property.city || "",
         area_size: property.area_size || "",
-        bedrooms: property.bedrooms || "",
-        bathrooms: property.bathrooms || "",
+        bedrooms: property.bedrooms || null,
+        bathrooms: property.bathrooms || null,
         description: property.description || "",
-        latitude: property.latitude ? parseFloat(property.latitude) : "",
-        longitude: property.longitude ? parseFloat(property.longitude) : "",
+        latitude: property.latitude ? parseFloat(property.latitude) : null,
+        longitude: property.longitude ? parseFloat(property.longitude) : null,
         is_available_for_sale: property.is_available_for_sale || false,
         is_available_for_rent: property.is_available_for_rent || false,
         is_photo_available: property.is_photo_available || false,
@@ -193,16 +200,21 @@ const AddProperty = observer(() => {
       if (area) values.location = area.name;
     }
 
+    const submissionData = {
+      ...values,
+    };
+
     let success;
     if (id) {
-      success = await PropertyStore.updateProperty(id, values);
+      success = await PropertyStore.updateProperty(id, submissionData);
     } else {
-      success = await PropertyStore.createProperty(values);
+      success = await PropertyStore.createProperty(submissionData);
     }
 
     if (success) {
-      showSuccess(id ? "Property updated successfully" : "Property created successfully");
-      navigate("/authenticated/properties");
+      showSuccess(id ? "successfully Updated" : "Property created successfully");
+      // Force navigation to ensure list refresh or state clear
+      navigate("/authenticated/properties", { replace: true });
     } else {
       showError("Error: " + PropertyStore.error);
     }
@@ -221,7 +233,13 @@ const AddProperty = observer(() => {
             onSubmit={handleSubmit}
             enableReinitialize
           >
-            {({ isSubmitting, values, setFieldValue }) => (
+            {({ isSubmitting, values, setFieldValue, errors, touched }) => {
+              // Debugging: Log errors when they occur
+              if (Object.keys(errors).length > 0) {
+                 console.log("Form Validation Errors:", errors);
+              }
+              
+              return (
               <Form className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
@@ -254,6 +272,37 @@ const AddProperty = observer(() => {
                     </Field>
                     <ErrorMessage name="purpose" component="div" className="text-red-500 text-sm mt-1" />
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Agent</label>
+                    <Field
+                      as="select"
+                      name="agent_id"
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    >
+                      <option value="">Select Agent</option>
+                      {PersonStore.agents.map((agent) => (
+                        <option key={agent.user_id} value={agent.user_id}>
+                          {agent.full_name} ({agent.phone})
+                        </option>
+                      ))}
+                    </Field>
+                    <ErrorMessage name="agent_id" component="div" className="text-red-500 text-sm mt-1" />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Property Status</label>
+                    <Field
+                      as="select"
+                      name="status"
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    >
+                      <option value="available">Available</option>
+                      <option value="under_deal">Under Deal</option>
+                      <option value="unavailable">Unavailable</option>
+                    </Field>
+                    <ErrorMessage name="status" component="div" className="text-red-500 text-sm mt-1" />
+                  </div>
                 </div>
 
                   {/* Location Section */}
@@ -279,6 +328,7 @@ const AddProperty = observer(() => {
                           <option key={p.id} value={p.id}>{p.name} {p.native_name ? `(${p.native_name})` : ''}</option>
                         ))}
                       </Field>
+                      <ErrorMessage name="province_id" component="div" className="text-red-500 text-sm mt-1" />
                     </div>
 
                     <div>
@@ -300,6 +350,7 @@ const AddProperty = observer(() => {
                           <option key={d.id} value={d.id}>{d.name} {d.native_name ? `(${d.native_name})` : ''}</option>
                         ))}
                       </Field>
+                      <ErrorMessage name="district_id" component="div" className="text-red-500 text-sm mt-1" />
                     </div>
 
                     <div>
@@ -315,6 +366,7 @@ const AddProperty = observer(() => {
                           <option key={a.id} value={a.id}>{a.name} {a.native_name ? `(${a.native_name})` : ''}</option>
                         ))}
                       </Field>
+                      <ErrorMessage name="area_id" component="div" className="text-red-500 text-sm mt-1" />
                     </div>
                   </div>
                   
@@ -325,6 +377,7 @@ const AddProperty = observer(() => {
                       values={values} 
                       apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY} 
                     />
+                    <ErrorMessage name="latitude" component="div" className="text-red-500 text-sm mt-1" />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -540,7 +593,8 @@ const AddProperty = observer(() => {
                   </button>
                 </div>
               </Form>
-            )}
+            );
+          }}
           </Formik>
         </div>
     </div>

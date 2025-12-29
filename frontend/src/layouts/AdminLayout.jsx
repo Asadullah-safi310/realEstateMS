@@ -4,6 +4,7 @@ import { observer } from 'mobx-react-lite';
 import { 
   LayoutDashboard, 
   Users, 
+  Contact,
   Building2, 
   Map, 
   LogOut, 
@@ -50,6 +51,7 @@ const AdminLayout = observer(() => {
   const navItems = [
     { path: '/admin/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
     { path: '/admin/users', icon: <Users size={20} />, label: 'Users' },
+    { path: '/owners', icon: <Contact size={20} />, label: 'People (Owners)' },
     { path: '/admin/properties', icon: <Building2 size={20} />, label: 'Properties' },
     { path: '/admin/deals', icon: <FileText size={20} />, label: 'Deals' },
     { path: '/admin/locations', icon: <Map size={20} />, label: 'Locations' },

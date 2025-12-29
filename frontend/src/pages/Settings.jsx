@@ -1,9 +1,8 @@
 import React from 'react';
-import MainLayout from '../layouts/MainLayout';
 
 const Settings = () => {
   return (
-    <MainLayout>
+    <div>
       <div className="max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">Settings</h1>
 
@@ -52,7 +51,7 @@ const Settings = () => {
           </div>
         </div>
       </div>
-    </MainLayout>
+    </div>
   );
 };
 

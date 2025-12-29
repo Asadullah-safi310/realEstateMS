@@ -11,15 +11,16 @@ export const personSchema = Yup.object({
   full_name: Yup.string().required('Full name is required'),
   phone: Yup.string().required('Phone is required'),
   email: Yup.string().email('Invalid email'),
-  national_id: Yup.string(),
+  national_id: Yup.string().required('National ID is required'),
   address: Yup.string(),
 });
 
 export const propertySchema = Yup.object({
-  person_id: Yup.number().required('Owner is required'),
+  agent_id: Yup.number().transform((value, originalValue) => originalValue === "" ? null : value).nullable(),
   property_type: Yup.string().required('Property type is required'),
   purpose: Yup.string().required('Purpose is required'),
   sale_price: Yup.number()
+    .transform((value, originalValue) => originalValue === "" ? null : value)
     .typeError('Sale price must be a number')
     .nullable()
     .when('is_available_for_sale', {
@@ -28,6 +29,7 @@ export const propertySchema = Yup.object({
       otherwise: (schema) => schema.nullable(),
     }),
   rent_price: Yup.number()
+    .transform((value, originalValue) => originalValue === "" ? null : value)
     .typeError('Rent price must be a number')
     .nullable()
     .when('is_available_for_rent', {
@@ -38,25 +40,31 @@ export const propertySchema = Yup.object({
   location: Yup.string().required('Location is required'),
   city: Yup.string().required('City is required'),
   area_size: Yup.string().required('Area size is required'),
-  bedrooms: Yup.number(),
-  bathrooms: Yup.number(),
+  bedrooms: Yup.number().transform((value, originalValue) => originalValue === "" ? null : value).nullable(),
+  bathrooms: Yup.number().transform((value, originalValue) => originalValue === "" ? null : value).nullable(),
   description: Yup.string(),
-  latitude: Yup.number().required('Please select a location on the map').typeError('Latitude must be a number'),
-  longitude: Yup.number().required('Please select a location on the map').typeError('Longitude must be a number'),
+  latitude: Yup.number().transform((value, originalValue) => originalValue === "" ? null : value).required('Please select a location on the map').typeError('Latitude must be a number'),
+  longitude: Yup.number().transform((value, originalValue) => originalValue === "" ? null : value).required('Please select a location on the map').typeError('Longitude must be a number'),
   is_available_for_sale: Yup.boolean(),
   is_available_for_rent: Yup.boolean(),
   is_photo_available: Yup.boolean(),
   is_attachment_available: Yup.boolean(),
   is_video_available: Yup.boolean(),
   videos: Yup.array(),
-}).test('at-least-one-availability', 'At least one availability option must be selected', function(value) {
-  return value.is_available_for_sale || value.is_available_for_rent;
+}).test('at-least-one-availability', function(value) {
+  if (!value?.is_available_for_sale && !value?.is_available_for_rent) {
+    return this.createError({ path: 'at-least-one-availability', message: 'At least one availability option must be selected' });
+  }
+  return true;
 });
 
 export const userPropertySchema = Yup.object({
   property_type: Yup.string().required('Property type is required'),
+  agent_id: Yup.number().transform((value, originalValue) => originalValue === "" ? null : value).nullable(),
   purpose: Yup.string().required('Purpose is required'),
+  status: Yup.string().oneOf(['available', 'under_deal', 'unavailable']).default('available'),
   sale_price: Yup.number()
+    .transform((value, originalValue) => originalValue === "" ? null : value)
     .typeError('Sale price must be a number')
     .nullable()
     .when('is_available_for_sale', {
@@ -65,6 +73,7 @@ export const userPropertySchema = Yup.object({
       otherwise: (schema) => schema.nullable(),
     }),
   rent_price: Yup.number()
+    .transform((value, originalValue) => originalValue === "" ? null : value)
     .typeError('Rent price must be a number')
     .nullable()
     .when('is_available_for_rent', {
@@ -72,25 +81,28 @@ export const userPropertySchema = Yup.object({
       then: (schema) => schema.required('Rent price is required when available for rent').positive('Rent price must be positive'),
       otherwise: (schema) => schema.nullable(),
     }),
-  province_id: Yup.number().required('Province is required'),
-  district_id: Yup.number().required('District is required'),
-  area_id: Yup.number().required('Area is required'),
+  province_id: Yup.number().transform((value, originalValue) => originalValue === "" ? null : value).required('Province is required'),
+  district_id: Yup.number().transform((value, originalValue) => originalValue === "" ? null : value).required('District is required'),
+  area_id: Yup.number().transform((value, originalValue) => originalValue === "" ? null : value).required('Area is required'),
   location: Yup.string(),
   city: Yup.string(),
   area_size: Yup.string().required('Area size is required'),
-  bedrooms: Yup.number(),
-  bathrooms: Yup.number(),
+  bedrooms: Yup.number().transform((value, originalValue) => originalValue === "" ? null : value).nullable(),
+  bathrooms: Yup.number().transform((value, originalValue) => originalValue === "" ? null : value).nullable(),
   description: Yup.string(),
-  latitude: Yup.number().required('Please select a location on the map').typeError('Latitude must be a number'),
-  longitude: Yup.number().required('Please select a location on the map').typeError('Longitude must be a number'),
+  latitude: Yup.number().transform((value, originalValue) => originalValue === "" ? null : value).required('Please select a location on the map').typeError('Latitude must be a number'),
+  longitude: Yup.number().transform((value, originalValue) => originalValue === "" ? null : value).required('Please select a location on the map').typeError('Longitude must be a number'),
   is_available_for_sale: Yup.boolean(),
   is_available_for_rent: Yup.boolean(),
   is_photo_available: Yup.boolean(),
   is_attachment_available: Yup.boolean(),
   is_video_available: Yup.boolean(),
   videos: Yup.array(),
-}).test('at-least-one-availability', 'At least one availability option must be selected', function(value) {
-  return value.is_available_for_sale || value.is_available_for_rent;
+}).test('at-least-one-availability', function(value) {
+  if (!value?.is_available_for_sale && !value?.is_available_for_rent) {
+    return this.createError({ path: 'at-least-one-availability', message: 'At least one availability option must be selected' });
+  }
+  return true;
 });
 
 export const clientSchema = Yup.object({
@@ -106,9 +118,8 @@ export const clientSchema = Yup.object({
 export const dealSchema = Yup.object({
   deal_type: Yup.string().required('Deal type is required').oneOf(['SALE', 'RENT']),
   property_id: Yup.number().required('Property is required'),
-  owner_id: Yup.number().required('Current owner is required'),
-  buyer_id: Yup.number().required('Buyer/Tenant is required'),
-  tenant_id: Yup.number().nullable(),
+  seller_person_id: Yup.number().required('Seller is required'),
+  buyer_person_id: Yup.number().required('Buyer/Tenant is required'),
   price: Yup.number().positive('Price must be positive').nullable(),
   start_date: Yup.date().nullable().when('deal_type', {
     is: 'RENT',

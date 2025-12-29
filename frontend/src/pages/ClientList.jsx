@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { useNavigate } from 'react-router-dom';
-import MainLayout from '../layouts/MainLayout';
 import ClientStore from '../stores/ClientStore';
 import useViewPreference from '../hooks/useViewPreference';
 import { showSuccess, showError } from '../utils/toast';
@@ -69,7 +68,7 @@ const ClientList = observer(() => {
   );
 
   return (
-    <MainLayout>
+    <div>
       <div>
         <div className="mb-8">
           <div className="flex justify-between items-center mb-6">
@@ -218,7 +217,7 @@ const ClientList = observer(() => {
         cancelText="Cancel"
         isDangerous={true}
       />
-    </MainLayout>
+    </div>
   );
 });
 

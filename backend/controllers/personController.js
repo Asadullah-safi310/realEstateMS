@@ -1,6 +1,7 @@
 const { validationResult } = require('express-validator');
-const { User, Property } = require('../models');
+const { Person, Property, User } = require('../models');
 const { sequelize } = require('../config/db');
+const { Op } = require('sequelize');
 
 const createPerson = async (req, res) => {
   const errors = validationResult(req);
@@ -10,22 +11,38 @@ const createPerson = async (req, res) => {
 
   try {
     const { full_name, phone, email, national_id, address } = req.body;
+    const id_card_path = req.file ? `/uploads/${req.file.filename}` : null;
 
-    const existingPerson = await User.findOne({ where: { phone } });
-    if (existingPerson) {
-      return res.status(400).json({ error: 'User with this phone already exists' });
+    // Check if person with this national_id already exists
+    if (national_id) {
+      const existingPerson = await Person.findOne({ where: { national_id } });
+      if (existingPerson) {
+        return res.status(400).json({ 
+          error: 'Person with this National ID already exists.', 
+          code: 'DUPLICATE_NATIONAL_ID',
+          person: {
+            id: existingPerson.id,
+            full_name: existingPerson.full_name
+          }
+        });
+      }
     }
 
-    // Create User with default password '123456' and username from email or phone
-    const username = email ? email.split('@')[0] : phone;
-    const person = await User.create({
-      username,
+    // Check if person with this phone already exists
+    if (phone) {
+      const existingPerson = await Person.findOne({ where: { phone } });
+      if (existingPerson) {
+        return res.status(400).json({ error: 'Person with this phone already exists', person: existingPerson });
+      }
+    }
+
+    const person = await Person.create({
       full_name,
       phone,
       email,
       national_id,
       address,
-      password_hash: '123456', // Default password
+      id_card_path,
     });
 
     res.status(201).json(person);
@@ -36,15 +53,27 @@ const createPerson = async (req, res) => {
 
 const getPersons = async (req, res) => {
   try {
-    const persons = await User.findAll({
-      attributes: { exclude: ['password_hash'] },
+    const { search } = req.query;
+    const where = {};
+    
+    if (search) {
+      where[Op.or] = [
+        { full_name: { [Op.like]: `%${search}%` } },
+        { phone: { [Op.like]: `%${search}%` } },
+        { email: { [Op.like]: `%${search}%` } }
+      ];
+    }
+
+    const persons = await Person.findAll({
+      where,
       include: [
         {
           model: Property,
-          as: 'Properties', // Assuming User.hasMany(Property) is aliased as Properties or default
-          attributes: ['property_id', 'property_type', 'location'],
+          as: 'OwnedProperties',
+          attributes: ['property_id', 'property_type', 'city'],
         },
       ],
+      limit: 20,
     });
 
     res.json(persons);
@@ -56,19 +85,22 @@ const getPersons = async (req, res) => {
 const getPersonById = async (req, res) => {
   try {
     const { id } = req.params;
-    const person = await User.findByPk(id, {
-      attributes: { exclude: ['password_hash'] },
+    const person = await Person.findByPk(id, {
       include: [
         {
           model: Property,
-          as: 'Properties',
-          attributes: ['property_id', 'property_type', 'location', 'city', 'sale_price', 'rent_price'],
+          as: 'OwnedProperties',
         },
+        {
+          model: User,
+          as: 'User',
+          attributes: ['user_id', 'username', 'role'],
+        }
       ],
     });
 
     if (!person) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: 'Person not found' });
     }
 
     res.json(person);
@@ -86,26 +118,25 @@ const updatePerson = async (req, res) => {
   try {
     const { id } = req.params;
     const { full_name, phone, email, national_id, address } = req.body;
-
-    const person = await User.findByPk(id);
+    
+    const person = await Person.findByPk(id);
     if (!person) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: 'Person not found' });
     }
 
-    if (phone !== person.phone) {
-      const existingPerson = await User.findOne({ where: { phone } });
-      if (existingPerson) {
-        return res.status(400).json({ error: 'User with this phone already exists' });
-      }
-    }
-
-    await person.update({
+    const updateData = {
       full_name,
       phone,
       email,
       national_id,
       address,
-    });
+    };
+
+    if (req.file) {
+      updateData.id_card_path = `/uploads/${req.file.filename}`;
+    }
+
+    await person.update(updateData);
 
     res.json(person);
   } catch (error) {
@@ -114,46 +145,105 @@ const updatePerson = async (req, res) => {
 };
 
 const deletePerson = async (req, res) => {
-  const transaction = await sequelize.transaction();
-
   try {
     const { id } = req.params;
-
-    const person = await User.findByPk(id, { transaction });
+    const person = await Person.findByPk(id);
     if (!person) {
-      await transaction.rollback();
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: 'Person not found' });
     }
 
-    // Check if user owns properties
-    const properties = await Property.findAll({
-      where: { owner_id: id },
-      transaction,
-    });
-
-    if (properties.length > 0) {
-      await transaction.rollback();
-      return res.status(400).json({ error: 'Cannot delete user who owns properties. Transfer or delete properties first.' });
+    const propertyCount = await Property.count({ where: { owner_person_id: id } });
+    if (propertyCount > 0) {
+      return res.status(400).json({ error: 'Cannot delete person who owns properties.' });
     }
 
-    await person.destroy({ transaction });
-    await transaction.commit();
-
-    res.json({ message: 'User deleted successfully' });
+    await person.destroy();
+    res.json({ message: 'Person deleted successfully' });
   } catch (error) {
-    await transaction.rollback();
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getAgents = async (req, res) => {
+  try {
+    const agents = await User.findAll({
+      where: { role: 'agent' },
+      attributes: ['user_id', 'full_name', 'phone', 'email'],
+    });
+    res.json(agents);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const updateProfile = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  try {
+    const { full_name, phone, email, national_id, address } = req.body;
+    
+    let person = await Person.findOne({ where: { user_id: req.user.user_id } });
+    
+    if (!person) {
+      person = await Person.create({
+        user_id: req.user.user_id,
+        full_name,
+        phone,
+        email: email || req.user.email,
+        national_id,
+        address,
+      });
+    } else {
+      await person.update({
+        full_name,
+        phone,
+        email: email || person.email,
+        national_id,
+        address,
+      });
+    }
+
+    res.json(person);
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
 const getProfile = async (req, res) => {
-  req.params.id = req.user.user_id;
-  return getPersonById(req, res);
-};
+  try {
+    const person = await Person.findOne({
+      where: { user_id: req.user.user_id },
+      include: [
+        {
+          model: User,
+          as: 'User',
+          attributes: ['user_id', 'username', 'role'],
+        }
+      ],
+    });
 
-const updateProfile = async (req, res) => {
-  req.params.id = req.user.user_id;
-  return updatePerson(req, res);
+    if (!person) {
+      return res.json({
+        full_name: req.user.full_name,
+        phone: req.user.phone,
+        email: req.user.email,
+        national_id: req.user.national_id,
+        address: req.user.address,
+        User: {
+          user_id: req.user.user_id,
+          username: req.user.username,
+          role: req.user.role
+        }
+      });
+    }
+
+    res.json(person);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
 module.exports = {
@@ -162,6 +252,7 @@ module.exports = {
   getPersonById,
   updatePerson,
   deletePerson,
+  getAgents,
   getProfile,
   updateProfile,
 };

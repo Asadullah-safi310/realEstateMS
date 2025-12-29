@@ -1,4 +1,4 @@
-const { User, Property, Deal, Province, District, Area } = require('../models');
+const { User, Property, Deal, Person, Province, District, Area } = require('../models');
 const { Op } = require('sequelize');
 
 // Get Dashboard Stats
@@ -78,7 +78,8 @@ exports.getAllProperties = async (req, res) => {
   try {
     const properties = await Property.findAll({
       include: [
-        { model: User, as: 'Owner', attributes: ['user_id', 'full_name', 'email'] },
+        { model: Person, as: 'Owner', attributes: ['id', 'full_name', 'email'] },
+        { model: User, as: 'Agent', attributes: ['user_id', 'full_name'] },
         { model: Province, as: 'ProvinceData' },
         { model: District, as: 'DistrictData' },
         { model: Area, as: 'AreaData' },
@@ -96,10 +97,10 @@ exports.getAllDeals = async (req, res) => {
   try {
     const deals = await Deal.findAll({
       include: [
-        { model: Property, as: 'Property', include: [{ model: User, as: 'Owner', attributes: ['full_name'] }] },
-        { model: User, as: 'Owner', attributes: ['full_name'] },
-        { model: User, as: 'Buyer', attributes: ['full_name'] },
-        { model: User, as: 'Tenant', attributes: ['full_name'] },
+        { model: Property, as: 'Property', include: [{ model: Person, as: 'Owner', attributes: ['full_name'] }] },
+        { model: Person, as: 'Seller', attributes: ['id', 'full_name'] },
+        { model: Person, as: 'Buyer', attributes: ['id', 'full_name'] },
+        { model: User, as: 'Agent', attributes: ['user_id', 'full_name'] },
       ],
       order: [['createdAt', 'DESC']],
     });

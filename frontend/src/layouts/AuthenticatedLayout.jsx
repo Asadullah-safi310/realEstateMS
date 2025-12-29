@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { observer } from 'mobx-react-lite';
-import { LayoutDashboard, Home, FileText, User, LogOut, Heart, ArrowLeft } from 'lucide-react';
+import { LayoutDashboard, Home, FileText, User, LogOut, Heart, ArrowLeft, Users } from 'lucide-react';
 import authStore from '../stores/AuthStore';
 
 const AuthenticatedLayout = observer(() => {
@@ -61,18 +61,6 @@ const AuthenticatedLayout = observer(() => {
           </Link>
           
           <Link 
-            to="/authenticated/deals" 
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
-              isActive('/authenticated/deals') 
-                ? 'bg-blue-50 text-blue-600' 
-                : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
-            }`}
-          >
-            <FileText size={20} />
-            <span className="font-medium">My Deals</span>
-          </Link>
-          
-          <Link 
             to="/authenticated/profile" 
             className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
               isActive('/authenticated/profile') 
@@ -83,6 +71,33 @@ const AuthenticatedLayout = observer(() => {
             <User size={20} />
             <span className="font-medium">Profile</span>
           </Link>
+          
+          {(authStore.user?.role === 'agent' || authStore.user?.role === 'admin') && (
+            <>
+              <Link 
+                to="/authenticated/deals" 
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                  isActive('/authenticated/deals') 
+                    ? 'bg-blue-50 text-blue-600' 
+                    : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
+                }`}
+              >
+                <FileText size={20} />
+                <span className="font-medium">My Deals</span>
+              </Link>
+              <Link 
+                to="/authenticated/persons" 
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${
+                  isActive('/authenticated/persons') 
+                    ? 'bg-blue-50 text-blue-600' 
+                    : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
+                }`}
+              >
+                <Users size={20} />
+                <span className="font-medium">Persons Management</span>
+              </Link>
+            </>
+          )}
         </nav>
 
         <div className="p-4 border-t border-gray-100 space-y-2">

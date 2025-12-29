@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { useNavigate } from 'react-router-dom';
-import MainLayout from '../layouts/MainLayout';
 import PropertyStore from '../stores/PropertyStore';
+import authStore from '../stores/AuthStore';
 import ImageCarousel from '../components/ImageCarousel';
 import useViewPreference from '../hooks/useViewPreference';
 import useTranslation from '../hooks/useTranslation';
@@ -180,16 +180,18 @@ const PropertyList = observer(() => {
           >
             📋 Details & History
           </button>
-          <button
-            onClick={() => {
-              navigate('/create-deal', { state: { propertyId } });
-              setOpenMenu(null);
-            }}
-            disabled={!canCreateDeal(PropertyStore.properties.find(p => p.property_id === propertyId))}
-            className="w-full text-left px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400 text-gray-700 hover:bg-gray-100"
-          >
-            🔄 Create Deal
-          </button>
+          {(authStore.user?.role === 'agent' || authStore.user?.role === 'admin') && (
+            <button
+              onClick={() => {
+                navigate('/authenticated/deals');
+                setOpenMenu(null);
+              }}
+              disabled={!canCreateDeal(PropertyStore.properties.find(p => p.property_id === propertyId))}
+              className="w-full text-left px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400 text-gray-700 hover:bg-gray-100"
+            >
+              🔄 Create Deal
+            </button>
+          )}
           <button
             onClick={() => {
               navigate(`/properties/${propertyId}`);
@@ -214,7 +216,7 @@ const PropertyList = observer(() => {
   );
 
   return (
-    <MainLayout>
+    <div>
       <div>
         <div className="mb-8">
           <div className="flex justify-between items-center mb-6">
@@ -450,7 +452,7 @@ const PropertyList = observer(() => {
           ownerPhone={callModal.ownerPhone}
         />
       </div>
-    </MainLayout>
+    </div>
   );
 });
 

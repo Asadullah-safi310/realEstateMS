@@ -8,58 +8,80 @@ const User = sequelize.define('User', {
     primaryKey: true,
     autoIncrement: true,
   },
+
   username: {
     type: DataTypes.STRING(100),
     allowNull: false,
-    unique: true,
   },
+
   email: {
     type: DataTypes.STRING(100),
     allowNull: false,
-    unique: true,
     validate: {
       isEmail: true,
     },
   },
+
   password_hash: {
     type: DataTypes.STRING(255),
     allowNull: false,
   },
+
   full_name: {
     type: DataTypes.STRING(100),
     allowNull: false,
   },
+
   phone: {
     type: DataTypes.STRING(50),
     allowNull: false,
   },
+
   profile_picture: {
     type: DataTypes.STRING(255),
     allowNull: true,
   },
+
   bio: {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+
   address: {
     type: DataTypes.STRING(255),
     allowNull: true,
   },
+
   national_id: {
     type: DataTypes.STRING(50),
     allowNull: true,
   },
+
   is_active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true,
   },
+
   role: {
     type: DataTypes.ENUM('admin', 'user', 'agent'),
     defaultValue: 'user',
   }
+
 }, {
   tableName: 'users',
   timestamps: true,
+
+  indexes: [
+    {
+      unique: true,
+      fields: ['username'],
+    },
+    {
+      unique: true,
+      fields: ['email'],
+    }
+  ],
+
   hooks: {
     beforeCreate: async (user) => {
       if (user.password_hash) {
@@ -77,7 +99,7 @@ const User = sequelize.define('User', {
 });
 
 User.prototype.validatePassword = async function(password) {
-  return await bcrypt.compare(password, this.password_hash);
+  return bcrypt.compare(password, this.password_hash);
 };
 
 module.exports = User;

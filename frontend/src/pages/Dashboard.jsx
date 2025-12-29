@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
-import MainLayout from '../layouts/MainLayout';
 import PersonStore from '../stores/PersonStore';
 import PropertyStore from '../stores/PropertyStore';
 import ClientStore from '../stores/ClientStore';
@@ -35,7 +34,7 @@ const Dashboard = observer(() => {
   const rentedProperties = PropertyStore.properties.filter(p => p.status === 'rented').length;
 
   return (
-    <MainLayout>
+    <div>
       <div className="space-y-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between">
@@ -174,7 +173,7 @@ const Dashboard = observer(() => {
           </div>
         </div>
       </div>
-    </MainLayout>
+    </div>
   );
 });
 

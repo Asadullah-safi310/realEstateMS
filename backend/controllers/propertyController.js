@@ -1,5 +1,5 @@
 const { validationResult } = require('express-validator');
-const { Property, Deal, User } = require('../models');
+const { Property, Deal, User, Person } = require('../models');
 const { sequelize } = require('../config/db');
 const { Op } = require('sequelize');
 const path = require('path');
@@ -13,17 +13,46 @@ const createProperty = async (req, res) => {
   const transaction = await sequelize.transaction();
 
   try {
-    const { person_id, property_type, purpose, sale_price, rent_price, location, address, province_id, district_id, area_id, city, area_size, bedrooms, bathrooms, description, latitude, longitude, is_available_for_sale, is_available_for_rent, is_photo_available, is_attachment_available, is_video_available, videos, visibility } = req.body;
+    const { 
+      owner_person_id, 
+      agent_id, 
+      property_type, 
+      purpose, 
+      sale_price, 
+      rent_price, 
+      location, 
+      address, 
+      province_id, 
+      district_id, 
+      area_id, 
+      city, 
+      area_size, 
+      bedrooms, 
+      bathrooms, 
+      description, 
+      latitude, 
+      longitude, 
+      is_available_for_sale, 
+      is_available_for_rent, 
+      is_photo_available, 
+      is_attachment_available, 
+      is_video_available, 
+      videos 
+    } = req.body;
 
-    // person_id is passed as owner_id
-    const owner = await User.findByPk(person_id, { transaction });
-    if (!owner) {
-      await transaction.rollback();
-      return res.status(404).json({ error: 'Owner (User) not found' });
+    // Check if owner exists (if provided)
+    if (owner_person_id) {
+      const owner = await Person.findByPk(owner_person_id, { transaction });
+      if (!owner) {
+        await transaction.rollback();
+        return res.status(404).json({ error: 'Owner (Person) not found' });
+      }
     }
 
     const property = await Property.create({
-      owner_id: person_id,
+      owner_person_id: owner_person_id || null,
+      agent_id: agent_id || null,
+      created_by_user_id: req.user ? req.user.user_id : null,
       property_type,
       purpose,
       sale_price: sale_price || null,
@@ -41,7 +70,6 @@ const createProperty = async (req, res) => {
       latitude: latitude || null,
       longitude: longitude || null,
       status: 'available',
-      visibility: visibility || 'PRIVATE',
       is_available_for_sale: is_available_for_sale === true || is_available_for_sale === 'true' ? true : false,
       is_available_for_rent: is_available_for_rent === true || is_available_for_rent === 'true' ? true : false,
       is_photo_available: is_photo_available === true || is_photo_available === 'true' ? true : false,
@@ -60,9 +88,22 @@ const createProperty = async (req, res) => {
 
 const getProperties = async (req, res) => {
   try {
+    const where = {};
+    
+    // If not admin, filter by assigned agent or creator
+    if (req.user && req.user.role !== 'admin') {
+      where[Op.or] = [
+        { agent_id: req.user.user_id },
+        { created_by_user_id: req.user.user_id }
+      ];
+    }
+
     const properties = await Property.findAll({
+      where,
       include: [
-        { model: User, as: 'Owner', attributes: ['user_id', 'full_name', 'phone'] },
+        { model: Person, as: 'Owner', attributes: ['id', 'full_name', 'phone'] },
+        { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone'] },
+        { model: User, as: 'Creator', attributes: ['user_id', 'full_name', 'phone'] },
       ],
     });
 
@@ -90,12 +131,22 @@ const getPropertyById = async (req, res) => {
     const { id } = req.params;
     const property = await Property.findByPk(id, {
       include: [
-        { model: User, as: 'Owner', attributes: ['user_id', 'full_name', 'phone', 'email', 'address'] },
+        { model: Person, as: 'Owner', attributes: ['id', 'full_name', 'phone', 'email', 'address'] },
+        { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone', 'email'] },
+        { model: User, as: 'Creator', attributes: ['user_id', 'full_name', 'phone', 'email'] },
       ],
     });
 
     if (!property) {
       return res.status(404).json({ error: 'Property not found' });
+    }
+
+    // Check visibility/permissions
+    if (req.user && req.user.role !== 'admin') {
+      const isPublic = (property.is_available_for_sale || property.is_available_for_rent) && property.status === 'available';
+      if (property.agent_id !== req.user.user_id && property.created_by_user_id !== req.user.user_id && !isPublic) {
+        return res.status(403).json({ error: 'Not authorized to view this property' });
+      }
     }
 
     const propJson = property.toJSON();
@@ -117,15 +168,41 @@ const getPropertyById = async (req, res) => {
 
 const searchProperties = async (req, res) => {
   try {
-    const { city, property_type, purpose, min_sale_price, max_sale_price, min_rent_price, max_rent_price, bedrooms, status, availability, visibility } = req.query;
+    const { city, property_type, purpose, min_sale_price, max_sale_price, min_rent_price, max_rent_price, bedrooms, status, availability, limit } = req.query;
     const where = {};
+
+    const publicCriteria = { 
+      status: 'available',
+      [Op.or]: [
+        { is_available_for_sale: true },
+        { is_available_for_rent: true }
+      ]
+    };
+
+    // Base criteria for security:
+    // 1. Admins see EVERYTHING.
+    // 2. Agents see their own (created or assigned) OR anything public & available.
+    // 3. Unauthenticated see only public & available.
+    if (!req.user || req.user.role !== 'admin') {
+      if (req.user) {
+        // Logged in (Agent/User)
+        // They should see: (Properties they own/manage) OR (Publicly available properties)
+        where[Op.or] = [
+          { agent_id: req.user.user_id },
+          { created_by_user_id: req.user.user_id },
+          publicCriteria
+        ];
+      } else {
+        // Public/Guest: Only see public criteria
+        Object.assign(where, publicCriteria);
+      }
+    }
 
     if (city) where.city = city;
     if (property_type) where.property_type = property_type;
     if (purpose) where.purpose = purpose;
     if (bedrooms) where.bedrooms = bedrooms;
     if (status) where.status = status;
-    if (visibility) where.visibility = visibility;
     
     if (min_sale_price || max_sale_price) {
       where.sale_price = {};
@@ -152,8 +229,12 @@ const searchProperties = async (req, res) => {
 
     const properties = await Property.findAll({ 
       where,
+      limit: limit ? parseInt(limit) : undefined,
+      order: [['createdAt', 'DESC']],
       include: [
-        { model: User, as: 'Owner', attributes: ['user_id', 'full_name', 'phone'] },
+        { model: Person, as: 'Owner', attributes: ['id', 'full_name', 'phone'] },
+        { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone'] },
+        { model: User, as: 'Creator', attributes: ['user_id', 'full_name'] },
       ]
     });
     res.json(properties);
@@ -170,19 +251,21 @@ const updateProperty = async (req, res) => {
 
   try {
     const { id } = req.params;
-    const { property_type, purpose, sale_price, rent_price, location, address, province_id, district_id, area_id, city, area_size, bedrooms, bathrooms, description, latitude, longitude, is_available_for_sale, is_available_for_rent, is_photo_available, is_attachment_available, is_video_available, visibility } = req.body;
+    const { owner_person_id, agent_id, property_type, purpose, sale_price, rent_price, location, address, province_id, district_id, area_id, city, area_size, bedrooms, bathrooms, description, latitude, longitude, is_available_for_sale, is_available_for_rent, is_photo_available, is_attachment_available, is_video_available } = req.body;
 
     const property = await Property.findByPk(id);
     if (!property) {
       return res.status(404).json({ error: 'Property not found' });
     }
 
-    // Check ownership
-    if (req.user && req.user.user_id !== property.owner_id && req.user.role !== 'admin') {
+    // Check ownership or assignment
+    if (req.user && req.user.user_id !== property.created_by_user_id && req.user.user_id !== property.agent_id && req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Not authorized to update this property' });
     }
 
     await property.update({
+      owner_person_id: owner_person_id !== undefined ? owner_person_id : property.owner_person_id,
+      agent_id: agent_id !== undefined ? agent_id : property.agent_id,
       property_type,
       purpose,
       sale_price: sale_price || null,
@@ -199,7 +282,6 @@ const updateProperty = async (req, res) => {
       description,
       latitude: latitude || null,
       longitude: longitude || null,
-      visibility: visibility || property.visibility,
       is_available_for_sale: is_available_for_sale === true || is_available_for_sale === 'true' ? true : false,
       is_available_for_rent: is_available_for_rent === true || is_available_for_rent === 'true' ? true : false,
       is_photo_available: is_photo_available === true || is_photo_available === 'true' ? true : false,
@@ -223,6 +305,11 @@ const updatePropertyStatus = async (req, res) => {
       return res.status(404).json({ error: 'Property not found' });
     }
 
+    // Check ownership or assignment
+    if (req.user && req.user.user_id !== property.created_by_user_id && req.user.user_id !== property.agent_id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Not authorized to update this property status' });
+    }
+
     await property.update({ status });
     res.json({ message: 'Property status updated successfully' });
   } catch (error) {
@@ -240,7 +327,7 @@ const deleteProperty = async (req, res) => {
     }
 
     // Check ownership
-    if (req.user && req.user.user_id !== property.owner_id && req.user.role !== 'admin') {
+    if (req.user && req.user.user_id !== property.created_by_user_id && req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Not authorized to delete this property' });
     }
 
@@ -265,8 +352,8 @@ const uploadFiles = async (req, res) => {
       return res.status(404).json({ error: 'Property not found' });
     }
 
-    // Check ownership
-    if (req.user && req.user.user_id !== property.owner_id && req.user.role !== 'admin') {
+    // Check ownership or assignment
+    if (req.user && req.user.user_id !== property.created_by_user_id && req.user.user_id !== property.agent_id && req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Not authorized to upload files to this property' });
     }
 
@@ -326,8 +413,8 @@ const deleteFile = async (req, res) => {
       return res.status(404).json({ error: 'Property not found' });
     }
 
-    // Check ownership
-    if (req.user && req.user.user_id !== property.owner_id && req.user.role !== 'admin') {
+    // Check ownership or assignment
+    if (req.user && req.user.user_id !== property.created_by_user_id && req.user.user_id !== property.agent_id && req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Not authorized to delete files from this property' });
     }
 
@@ -358,6 +445,18 @@ const getAvailableProperties = async (req, res) => {
     const { dealType } = req.query;
     const where = {};
 
+    // If not admin, filter by assigned agent or creator
+    if (req.user && req.user.role !== 'admin') {
+      where[Op.and] = [
+        {
+          [Op.or]: [
+            { agent_id: req.user.user_id },
+            { created_by_user_id: req.user.user_id }
+          ]
+        }
+      ];
+    }
+
     if (dealType === 'SALE') {
       where.is_available_for_sale = true;
     } else if (dealType === 'RENT') {
@@ -372,7 +471,9 @@ const getAvailableProperties = async (req, res) => {
     const properties = await Property.findAll({
       where,
       include: [
-        { model: User, as: 'Owner', attributes: ['user_id', 'full_name', 'phone'] },
+        { model: Person, as: 'Owner', attributes: ['id', 'full_name', 'phone'] },
+        { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone'] },
+        { model: User, as: 'Creator', attributes: ['user_id', 'full_name', 'phone'] },
       ],
     });
 
@@ -397,9 +498,11 @@ const getPropertiesByOwner = async (req, res) => {
     const { id } = req.params;
 
     const properties = await Property.findAll({
-      where: { owner_id: id },
+      where: { owner_person_id: id },
       include: [
-        { model: User, as: 'Owner', attributes: ['user_id', 'full_name', 'phone'] },
+        { model: Person, as: 'Owner', attributes: ['id', 'full_name', 'phone'] },
+        { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone'] },
+        { model: User, as: 'Creator', attributes: ['user_id', 'full_name', 'phone'] },
       ],
     });
 
@@ -415,7 +518,7 @@ const getPropertiesByTenant = async (req, res) => {
 
     const deals = await Deal.findAll({
       where: {
-        buyer_id: id,
+        buyer_person_id: id,
         deal_type: 'RENT',
       },
       include: [
@@ -423,7 +526,9 @@ const getPropertiesByTenant = async (req, res) => {
           model: Property,
           as: 'Property',
           include: [
-            { model: User, as: 'Owner', attributes: ['user_id', 'full_name', 'phone'] },
+            { model: Person, as: 'Owner', attributes: ['id', 'full_name', 'phone'] },
+            { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone'] },
+            { model: User, as: 'Creator', attributes: ['user_id', 'full_name'] },
           ],
         },
       ],
@@ -447,6 +552,11 @@ const updatePropertyAvailability = async (req, res) => {
       return res.status(404).json({ error: 'Property not found' });
     }
 
+    // Check ownership or assignment
+    if (req.user && req.user.user_id !== property.created_by_user_id && req.user.user_id !== property.agent_id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Not authorized to update this property availability' });
+    }
+
     const updateData = {};
     if (is_available_for_sale !== undefined) updateData.is_available_for_sale = is_available_for_sale;
     if (is_available_for_rent !== undefined) updateData.is_available_for_rent = is_available_for_rent;
@@ -459,8 +569,124 @@ const updatePropertyAvailability = async (req, res) => {
 };
 
 const getMyProperties = async (req, res) => {
-  req.params.id = req.user.user_id;
-  return getPropertiesByOwner(req, res);
+  try {
+    const userId = req.user.user_id;
+    const properties = await Property.findAll({
+      where: {
+        [Op.or]: [
+          { created_by_user_id: userId },
+          { agent_id: userId }
+        ]
+      },
+      include: [
+        { model: Person, as: 'Owner', attributes: ['id', 'full_name', 'phone'] },
+        { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone'] },
+        { model: User, as: 'Creator', attributes: ['user_id', 'full_name', 'phone'] },
+      ],
+    });
+    res.json(properties);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+const getPublicProperties = async (req, res) => {
+  try {
+    const { limit } = req.query;
+    const properties = await Property.findAll({
+      where: {
+        status: 'available',
+        [Op.or]: [
+          { is_available_for_sale: true },
+          { is_available_for_rent: true }
+        ]
+      },
+      limit: limit ? parseInt(limit) : undefined,
+      order: [['createdAt', 'DESC']],
+      include: [
+        { model: Person, as: 'Owner', attributes: ['id', 'full_name', 'phone'] },
+        { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone'] },
+      ],
+    });
+
+    const enrichedProperties = properties.map(prop => {
+      const propJson = prop.toJSON();
+      return {
+        ...propJson,
+        current_owner: propJson.Owner,
+        is_available_for_sale: Boolean(propJson.is_available_for_sale),
+        is_available_for_rent: Boolean(propJson.is_available_for_rent),
+        is_photo_available: Boolean(propJson.is_photo_available),
+        is_attachment_available: Boolean(propJson.is_attachment_available),
+        is_video_available: Boolean(propJson.is_video_available),
+      };
+    });
+
+    res.json(enrichedProperties);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getPublicPropertiesByUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // First find the user to check their role
+    const user = await User.findByPk(id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const where = {
+      status: 'available',
+      [Op.or]: [
+        { is_available_for_sale: true },
+        { is_available_for_rent: true }
+      ]
+    };
+
+    if (user.role === 'agent') {
+      // For Agent: Created by this agent OR Assigned to this agent
+      where[Op.and] = [
+        {
+          [Op.or]: [
+            { created_by_user_id: id },
+            { agent_id: id }
+          ]
+        }
+      ];
+    } else {
+      // For User: Only created by this user
+      where.created_by_user_id = id;
+    }
+
+    const properties = await Property.findAll({
+      where,
+      include: [
+        { model: Person, as: 'Owner', attributes: ['id', 'full_name', 'phone'] },
+        { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone'] },
+      ],
+    });
+
+    const enrichedProperties = properties.map(prop => {
+      const propJson = prop.toJSON();
+      return {
+        ...propJson,
+        current_owner: propJson.Owner,
+        is_available_for_sale: Boolean(propJson.is_available_for_sale),
+        is_available_for_rent: Boolean(propJson.is_available_for_rent),
+        is_photo_available: Boolean(propJson.is_photo_available),
+        is_attachment_available: Boolean(propJson.is_attachment_available),
+        is_video_available: Boolean(propJson.is_video_available),
+      };
+    });
+
+    res.json(enrichedProperties);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
 module.exports = {
@@ -468,6 +694,8 @@ module.exports = {
   getProperties,
   getPropertyById,
   searchProperties,
+  getPublicProperties,
+  getPublicPropertiesByUser,
   updateProperty,
   updatePropertyStatus,
   deleteProperty,

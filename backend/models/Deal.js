@@ -11,24 +11,28 @@ const Deal = sequelize.define('Deal', {
     type: DataTypes.INTEGER,
     allowNull: false,
   },
+  agent_user_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Agent managing the deal (User)',
+  },
+  seller_person_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Real person who is selling/leasing',
+  },
+  buyer_person_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Real person who is buying/renting',
+  },
   deal_type: {
     type: DataTypes.ENUM('SALE', 'RENT'),
     allowNull: false,
   },
-  owner_id: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    comment: 'Current owner before the deal',
-  },
-  buyer_id: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    comment: 'Person becoming the new owner (for SALE) or tenant (for RENT)',
-  },
-  tenant_id: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    comment: 'Tenant (for SALE, if property has tenant)',
+  status: {
+    type: DataTypes.ENUM('active', 'completed', 'canceled'),
+    defaultValue: 'active',
   },
   price: {
     type: DataTypes.DECIMAL(18, 2),
@@ -46,9 +50,22 @@ const Deal = sequelize.define('Deal', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
-  status: {
-    type: DataTypes.ENUM('PENDING', 'COMPLETED', 'CANCELLED'),
-    defaultValue: 'PENDING',
+  // Snapshots for legal/history reasons
+  seller_name_snapshot: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  buyer_name_snapshot: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  seller_phone_snapshot: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  buyer_phone_snapshot: {
+    type: DataTypes.STRING,
+    allowNull: true,
   },
   deal_completed_at: {
     type: DataTypes.DATE,

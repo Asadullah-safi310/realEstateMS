@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { useNavigate } from 'react-router-dom';
 import { Filter } from 'lucide-react';
-import MainLayout from '../layouts/MainLayout';
 import DealStore from '../stores/DealStore';
 import DealFilterPanel from '../components/DealFilterPanel';
 import useViewPreference from '../hooks/useViewPreference';
@@ -82,7 +81,7 @@ const DealList = observer(() => {
   };
 
   return (
-    <MainLayout>
+    <div>
       <DealFilterPanel
         isOpen={isFilterPanelOpen}
         onClose={() => setIsFilterPanelOpen(false)}
@@ -224,7 +223,7 @@ const DealList = observer(() => {
           </div>
         )}
       </div>
-    </MainLayout>
+    </div>
   );
 });
 

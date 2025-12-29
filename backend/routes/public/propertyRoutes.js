@@ -5,9 +5,13 @@ const {
   getPropertyById, 
   searchProperties, 
   getAvailableProperties,
-  getPropertiesByOwner 
+  getPropertiesByOwner,
+  getPublicProperties,
+  getPublicPropertiesByUser
 } = require('../../controllers/propertyController');
 
+router.get('/public', getPublicProperties);
+router.get('/user/:id', getPublicPropertiesByUser);
 router.get('/search', searchProperties);
 router.get('/available', getAvailableProperties);
 router.get('/owner/:id', getPropertiesByOwner);

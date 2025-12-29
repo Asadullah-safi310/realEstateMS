@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { observer } from "mobx-react-lite";
 import { useNavigate, useParams } from "react-router-dom";
 import { Formik, Form, Field, ErrorMessage } from "formik";
-import MainLayout from "../layouts/MainLayout";
 import PropertyStore from "../stores/PropertyStore";
 import PersonStore from "../stores/PersonStore";
 import { propertySchema } from "../validation/schemas";
@@ -24,6 +23,7 @@ const AddProperty = observer(() => {
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, fileUrl: null, type: null });
   const [initialValues, setInitialValues] = useState({
     person_id: "",
+    agent_id: "",
     property_type: "",
     purpose: "",
     sale_price: "",
@@ -46,6 +46,7 @@ const AddProperty = observer(() => {
 
   useEffect(() => {
     PersonStore.fetchPersons();
+    PersonStore.fetchAgents();
     if (id) {
       loadProperty(id);
     }
@@ -56,6 +57,7 @@ const AddProperty = observer(() => {
     if (property) {
       setInitialValues({
         person_id: property.current_owner?.Person?.person_id || "",
+        agent_id: property.agent_id || "",
         property_type: property.property_type || "",
         purpose: property.purpose || "",
         sale_price: property.sale_price ? parseFloat(property.sale_price) : "",
@@ -143,7 +145,27 @@ const AddProperty = observer(() => {
     }
   };
 
-  const handleSubmit = async (values) => {
+  const handleSubmit = async (values, { setSubmitting, setTouched, validateForm }) => {
+    // Run validation first and show errors if present
+    const errors = await validateForm();
+    if (errors && Object.keys(errors).length > 0) {
+      // mark all errored fields touched so error messages render
+      const touched = Object.keys(errors).reduce((acc, key) => ({ ...acc, [key]: true }), {});
+      setTouched(touched);
+
+      // scroll to and focus first error field
+      const firstErrorField = Object.keys(errors)[0];
+      const el = document.querySelector(`[name="${firstErrorField}"]`);
+      if (el && typeof el.scrollIntoView === 'function') {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.focus && el.focus();
+      }
+
+      showError('Please fix the highlighted errors');
+      setSubmitting(false);
+      return;
+    }
+
     console.log("Form submitted with values:", values);
     let success;
     if (id) {
@@ -160,10 +182,11 @@ const AddProperty = observer(() => {
     } else {
       showError("Error: " + PropertyStore.error);
     }
+    setSubmitting(false);
   };
 
   return (
-    <MainLayout>
+    <div>
       <div className="max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">
           {id ? t("properties.editProperty") : t("properties.addProperty")}
@@ -176,8 +199,11 @@ const AddProperty = observer(() => {
             onSubmit={handleSubmit}
             enableReinitialize
           >
-            {({ isSubmitting, values, setFieldValue }) => (
+            {({ isSubmitting, values, setFieldValue, errors, submitCount }) => (
               <Form>
+                {submitCount > 0 && Object.keys(errors).length > 0 && (
+                  <div className="mb-4 text-red-600">Please fix the highlighted errors before submitting the form.</div>
+                )}
                 <div className="mb-4">
                   <label
                     htmlFor="person_id"
@@ -199,6 +225,32 @@ const AddProperty = observer(() => {
                   </Field>
                   <ErrorMessage
                     name="person_id"
+                    component="div"
+                    className="text-red-600 text-sm mt-1"
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <label
+                    htmlFor="agent_id"
+                    className="block text-gray-700 text-sm font-semibold mb-2"
+                  >
+                    Assigned Agent
+                  </label>
+                  <Field
+                    as="select"
+                    name="agent_id"
+                    className="w-full px-3 py-2 border border-gray-300 rounded"
+                  >
+                    <option value="">Select Agent</option>
+                    {PersonStore.agents.map((agent) => (
+                      <option key={agent.user_id} value={agent.user_id}>
+                        {agent.full_name} ({agent.phone})
+                      </option>
+                    ))}
+                  </Field>
+                  <ErrorMessage
+                    name="agent_id"
                     component="div"
                     className="text-red-600 text-sm mt-1"
                   />
@@ -404,6 +456,7 @@ const AddProperty = observer(() => {
                   <p className="text-xs text-gray-600 mt-2">
                     Select which types of deals this property is available for
                   </p>
+                  <ErrorMessage name="is_available_for_sale" component="div" className="text-red-600 text-sm mt-1" />
                 </div>
 
                 <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded">
@@ -799,7 +852,7 @@ const AddProperty = observer(() => {
         cancelText="Cancel"
         isDangerous={true}
       />
-    </MainLayout>
+    </div>
   );
 });
 

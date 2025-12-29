@@ -7,6 +7,7 @@ require('./models');
 
 const authRoutes = require('./routes/authRoutes');
 const publicPropertyRoutes = require('./routes/public/propertyRoutes');
+const publicUserRoutes = require('./routes/public/userRoutes');
 const protectedPropertyRoutes = require('./routes/protected/propertyRoutes');
 const protectedDealRoutes = require('./routes/protected/dealRoutes');
 const protectedProfileRoutes = require('./routes/protected/profileRoutes');
@@ -30,6 +31,7 @@ initDB();
 
 app.use('/api/auth', authRoutes);
 app.use('/api/public/properties', publicPropertyRoutes);
+app.use('/api/public/users', publicUserRoutes);
 app.use('/api/properties', protect, protectedPropertyRoutes);
 app.use('/api/deals', protect, protectedDealRoutes);
 app.use('/api/profile', protect, protectedProfileRoutes);

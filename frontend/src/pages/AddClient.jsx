@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
-import MainLayout from '../layouts/MainLayout';
 import ClientStore from '../stores/ClientStore';
 import { clientSchema } from '../validation/schemas';
 import { showSuccess, showError } from '../utils/toast';
@@ -31,7 +30,7 @@ const AddClient = () => {
   };
 
   return (
-    <MainLayout>
+    <div>
       <div className="max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">Add Client</h1>
 
@@ -106,7 +105,7 @@ const AddClient = () => {
           </Formik>
         </div>
       </div>
-    </MainLayout>
+    </div>
   );
 };
 

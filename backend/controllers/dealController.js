@@ -1,5 +1,5 @@
 const { validationResult } = require('express-validator');
-const { Deal, Property, User, PropertyHistory } = require('../models');
+const { Deal, Property, User, Person, PropertyHistory } = require('../models');
 const { sequelize } = require('../config/db');
 
 const createDeal = async (req, res) => {
@@ -11,7 +11,16 @@ const createDeal = async (req, res) => {
   const transaction = await sequelize.transaction();
 
   try {
-    const { deal_type, property_id, owner_id, buyer_id, tenant_id, price, start_date, notes } = req.body;
+    const { 
+      deal_type, 
+      property_id, 
+      seller_person_id, 
+      buyer_person_id, 
+      price, 
+      start_date, 
+      end_date,
+      notes,
+    } = req.body;
 
     const property = await Property.findByPk(property_id, { transaction });
     if (!property) {
@@ -19,122 +28,86 @@ const createDeal = async (req, res) => {
       return res.status(404).json({ error: 'Property not found' });
     }
 
-    const owner = await User.findByPk(owner_id, { transaction });
-    if (!owner) {
+    // Check if the logged-in user is an agent or admin
+    if (req.user.role !== 'agent' && req.user.role !== 'admin') {
       await transaction.rollback();
-      return res.status(404).json({ error: 'Owner not found' });
+      return res.status(403).json({ error: 'Only agents and admins can create deals' });
     }
 
+    // Check if the agent is authorized for this property (assigned agent or creator or admin)
+    if (req.user.role === 'agent') {
+      if (property.agent_id !== req.user.user_id && property.created_by_user_id !== req.user.user_id) {
+        await transaction.rollback();
+        return res.status(403).json({ error: 'You are not authorized to create a deal for this property.' });
+      }
+    }
+
+    // Fetch seller and buyer for snapshots
+    const seller = await Person.findByPk(seller_person_id || property.owner_person_id, { transaction });
+    const buyer = await Person.findByPk(buyer_person_id, { transaction });
+
+    if (!seller) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Seller (Person) not found' });
+    }
+
+    if (!buyer) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Buyer/Tenant (Person) not found' });
+    }
+
+    const deal = await Deal.create({
+      property_id,
+      agent_user_id: req.user.user_id,
+      seller_person_id: seller.id,
+      buyer_person_id: buyer.id,
+      deal_type,
+      price,
+      start_date,
+      end_date,
+      notes,
+      seller_name_snapshot: seller.full_name,
+      seller_phone_snapshot: seller.phone,
+      buyer_name_snapshot: buyer.full_name,
+      buyer_phone_snapshot: buyer.phone,
+      status: 'completed',
+      deal_completed_at: new Date(),
+    }, { transaction });
+
+    // Update Property status and availability
+    const updateData = {
+      status: 'under_deal',
+      is_available_for_sale: false,
+      is_available_for_rent: false,
+    };
+
+    // If it's a SALE, transfer ownership to the buyer
     if (deal_type === 'SALE') {
-      if (!Boolean(property.is_available_for_sale)) {
-        await transaction.rollback();
-        return res.status(400).json({ error: 'This property is not available for sale' });
-      }
-      if (!buyer_id) {
-        await transaction.rollback();
-        return res.status(400).json({ error: 'Buyer ID is required for SALE deal' });
-      }
-
-      const buyer = await User.findByPk(buyer_id, { transaction });
-      if (!buyer) {
-        await transaction.rollback();
-        return res.status(404).json({ error: 'Buyer not found' });
-      }
-
-      const deal = await Deal.create({
-        property_id,
-        deal_type: 'SALE',
-        owner_id,
-        buyer_id,
-        tenant_id: tenant_id || null,
-        price,
-        notes,
-        status: 'COMPLETED',
-        deal_completed_at: new Date(),
-      }, { transaction });
-
-      // Create History
-      await PropertyHistory.create({
-        property_id,
-        previous_owner_id: owner_id,
-        new_owner_id: buyer_id,
-        change_type: 'TRANSFERRED_SALE',
-        change_date: new Date(),
-        details: { price, notes },
-      }, { transaction });
-
-      // Update Property Owner and Status
-      await Property.update(
-        { 
-          owner_id: buyer_id,
-          status: 'sold', 
-          is_available_for_sale: false 
-        },
-        { where: { property_id }, transaction }
-      );
-
-    } else if (deal_type === 'RENT') {
-      if (!Boolean(property.is_available_for_rent)) {
-        await transaction.rollback();
-        return res.status(400).json({ error: 'This property is not available for rent' });
-      }
-      if (!buyer_id) {
-        await transaction.rollback();
-        return res.status(400).json({ error: 'Tenant ID is required for RENT deal' });
-      }
-
-      if (!start_date) {
-        await transaction.rollback();
-        return res.status(400).json({ error: 'Start date is required for RENT deal' });
-      }
-
-      const tenant = await User.findByPk(buyer_id, { transaction });
-      if (!tenant) {
-        await transaction.rollback();
-        return res.status(404).json({ error: 'Tenant not found' });
-      }
-
-      const deal = await Deal.create({
-        property_id,
-        deal_type: 'RENT',
-        owner_id,
-        buyer_id, // Tenant is stored in buyer_id for RENT deals in this logic or tenant_id?
-        tenant_id: buyer_id,
-        price,
-        start_date,
-        notes,
-        status: 'COMPLETED',
-        deal_completed_at: new Date(),
-      }, { transaction });
-
-      // Create History
-      await PropertyHistory.create({
-        property_id,
-        previous_owner_id: owner_id, // Owner doesn't change
-        new_owner_id: owner_id,
-        change_type: 'RENTED',
-        change_date: new Date(),
-        details: { tenant_id: buyer_id, price, notes },
-      }, { transaction });
-
-      // Update Property Status
-      await Property.update(
-        { status: 'rented', is_available_for_rent: false },
-        { where: { property_id }, transaction }
-      );
-
-    } else {
-      await transaction.rollback();
-      return res.status(400).json({ error: 'Invalid deal type. Must be SALE or RENT' });
+      updateData.owner_person_id = buyer.id;
     }
+
+    await property.update(updateData, { transaction });
+
+    // Create History
+    await PropertyHistory.create({
+      property_id,
+      previous_owner_id: null, // Legacy field, might want to refactor history too later
+      new_owner_id: null,
+      change_type: deal_type === 'SALE' ? 'TRANSFERRED_SALE' : 'RENTED',
+      change_date: new Date(),
+      details: { 
+        deal_id: deal.deal_id,
+        price, 
+        seller: seller.full_name, 
+        buyer: buyer.full_name 
+      },
+    }, { transaction });
 
     await transaction.commit();
     
-    const finalProperty = await Property.findByPk(property_id);
-    
     res.status(201).json({ 
-      message: `${deal_type} deal created successfully and property updated`,
-      property: finalProperty
+      message: `${deal_type} deal created successfully`,
+      deal_id: deal.deal_id
     });
   } catch (error) {
     await transaction.rollback();
@@ -146,14 +119,13 @@ const getDeals = async (req, res) => {
   try {
     const deals = await Deal.findAll({
       include: [
-        { model: Property, as: 'Property', attributes: ['property_id', 'property_type', 'location', 'city', 'sale_price', 'rent_price'] },
-        { model: User, as: 'Owner', attributes: ['user_id', 'full_name', 'phone'] },
-        { model: User, as: 'Buyer', attributes: ['user_id', 'full_name', 'phone'] },
-        { model: User, as: 'Tenant', attributes: ['user_id', 'full_name', 'phone'] },
+        { model: Property, as: 'Property' },
+        { model: Person, as: 'Seller', attributes: ['id', 'full_name', 'phone'] },
+        { model: Person, as: 'Buyer', attributes: ['id', 'full_name', 'phone'] },
+        { model: User, as: 'Agent', attributes: ['user_id', 'full_name'] },
       ],
       order: [['created_at', 'DESC']],
     });
-
     res.json(deals);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -165,17 +137,16 @@ const getDealById = async (req, res) => {
     const { id } = req.params;
     const deal = await Deal.findByPk(id, {
       include: [
-        { model: Property, as: 'Property', attributes: ['property_id', 'property_type', 'location', 'city', 'sale_price', 'rent_price', 'status'] },
-        { model: User, as: 'Owner', attributes: ['user_id', 'full_name', 'phone', 'email'] },
-        { model: User, as: 'Buyer', attributes: ['user_id', 'full_name', 'phone', 'email'] },
-        { model: User, as: 'Tenant', attributes: ['user_id', 'full_name', 'phone', 'email'] },
+        { model: Property, as: 'Property' },
+        { model: Person, as: 'Seller' },
+        { model: Person, as: 'Buyer' },
+        { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'email'] },
       ],
     });
 
     if (!deal) {
       return res.status(404).json({ error: 'Deal not found' });
     }
-
     res.json(deal);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -185,25 +156,15 @@ const getDealById = async (req, res) => {
 const getDealsByUser = async (req, res) => {
   try {
     const userId = req.user.user_id;
-    const { Op } = require('sequelize');
-
     const deals = await Deal.findAll({
-      where: {
-        [Op.or]: [
-          { owner_id: userId },
-          { buyer_id: userId },
-          { tenant_id: userId }
-        ]
-      },
+      where: { agent_user_id: userId },
       include: [
-        { model: Property, as: 'Property', attributes: ['property_id', 'property_type', 'location', 'city', 'sale_price', 'rent_price'] },
-        { model: User, as: 'Owner', attributes: ['user_id', 'full_name', 'phone'] },
-        { model: User, as: 'Buyer', attributes: ['user_id', 'full_name', 'phone'] },
-        { model: User, as: 'Tenant', attributes: ['user_id', 'full_name', 'phone'] },
+        { model: Property, as: 'Property' },
+        { model: Person, as: 'Seller', attributes: ['id', 'full_name'] },
+        { model: Person, as: 'Buyer', attributes: ['id', 'full_name'] },
       ],
       order: [['created_at', 'DESC']],
     });
-
     res.json(deals);
   } catch (error) {
     res.status(500).json({ error: error.message });

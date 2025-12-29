@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import MainLayout from '../layouts/MainLayout';
 import axiosInstance from '../api/axiosInstance';
 import { showSuccess, showError } from '../utils/toast';
 
@@ -192,7 +191,7 @@ const CreateDeal = () => {
         buyer_id: parseInt(formData.buyer_id),
         tenant_id: formData.deal_type === 'RENT' ? parseInt(formData.buyer_id) : null,
         price: formData.price ? parseFloat(formData.price) : null,
-        start_date: formData.deal_type === 'RENT' ? formData.start_date : null,
+        start_date: formData.deal_type === 'RENT' ? (formData.start_date || null) : null,
         notes: formData.notes,
       };
 
@@ -226,16 +225,16 @@ const CreateDeal = () => {
 
   if (isDataLoading) {
     return (
-      <MainLayout>
+      <div>
         <div className="flex items-center justify-center h-screen">
           <p className="text-gray-600">Loading...</p>
         </div>
-      </MainLayout>
+      </div>
     );
   }
 
   return (
-    <MainLayout>
+    <div>
       {showTypeModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-8 max-w-sm">
@@ -454,7 +453,7 @@ const CreateDeal = () => {
           </form>
         </div>
       </div>
-    </MainLayout>
+    </div>
   );
 };
 

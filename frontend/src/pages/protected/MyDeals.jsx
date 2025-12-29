@@ -7,17 +7,18 @@ const MyDeals = observer(() => {
   const [deals, setDeals] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchDeals = async () => {
+    try {
+      const response = await axiosInstance.get('/deals');
+      setDeals(response.data);
+    } catch (error) {
+      console.error('Failed to fetch deals', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchDeals = async () => {
-      try {
-        const response = await axiosInstance.get('/deals');
-        setDeals(response.data);
-      } catch (error) {
-        console.error('Failed to fetch deals', error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchDeals();
   }, []);
 
@@ -63,20 +64,12 @@ const MyDeals = observer(() => {
                     <div className="flex flex-wrap gap-6 text-sm text-gray-600">
                       <div className="flex items-center gap-2">
                         <User size={16} className="text-gray-400" />
-                        <span>Owner: <span className="font-medium text-gray-900">{deal.Owner?.full_name}</span></span>
+                        <span>Owner/Seller: <span className="font-medium text-gray-900">{deal.seller_name_snapshot || deal.Seller?.full_name}</span></span>
                       </div>
-                      {deal.Buyer && (
-                        <div className="flex items-center gap-2">
-                          <User size={16} className="text-gray-400" />
-                          <span>Buyer: <span className="font-medium text-gray-900">{deal.Buyer?.full_name}</span></span>
-                        </div>
-                      )}
-                      {deal.Tenant && (
-                        <div className="flex items-center gap-2">
-                          <User size={16} className="text-gray-400" />
-                          <span>Tenant: <span className="font-medium text-gray-900">{deal.Tenant?.full_name}</span></span>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <User size={16} className="text-gray-400" />
+                        <span>{deal.deal_type === 'SALE' ? 'Buyer' : 'Tenant'}: <span className="font-medium text-gray-900">{deal.buyer_name_snapshot || deal.Buyer?.full_name}</span></span>
+                      </div>
                     </div>
                   </div>
 

@@ -7,13 +7,24 @@ const Property = sequelize.define('Property', {
     primaryKey: true,
     autoIncrement: true,
   },
-  owner_id: {
+  owner_person_id: {
     type: DataTypes.INTEGER,
     allowNull: true,
+    comment: 'Real person who owns the property',
   },
-  visibility: {
-    type: DataTypes.ENUM('PRIVATE', 'DRAFT', 'PUBLIC'),
-    defaultValue: 'PRIVATE',
+  agent_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Agent managing this property (User)',
+  },
+  created_by_user_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'System User who created/added the property',
+  },
+  status: {
+    type: DataTypes.ENUM('available', 'under_deal', 'unavailable'),
+    defaultValue: 'available',
   },
   property_type: {
     type: DataTypes.STRING(50),
@@ -62,11 +73,11 @@ const Property = sequelize.define('Property', {
   },
   location: {
     type: DataTypes.STRING(255),
-    allowNull: true, // Legacy field, kept for backward compatibility or manual entry
+    allowNull: true,
   },
   city: {
     type: DataTypes.STRING(100),
-    allowNull: true, // Changed to true as we move to structured location
+    allowNull: true,
   },
   area_size: {
     type: DataTypes.STRING(50),
@@ -95,21 +106,14 @@ const Property = sequelize.define('Property', {
   photos: {
     type: DataTypes.JSON,
     defaultValue: [],
-    comment: 'Array of photo URLs',
   },
   attachments: {
     type: DataTypes.JSON,
     defaultValue: [],
-    comment: 'Array of attachment file paths',
   },
   videos: {
     type: DataTypes.JSON,
     defaultValue: [],
-    comment: 'Array of video URLs (uploaded or external)',
-  },
-  status: {
-    type: DataTypes.STRING(20),
-    defaultValue: 'available',
   },
   is_available_for_sale: {
     type: DataTypes.BOOLEAN,

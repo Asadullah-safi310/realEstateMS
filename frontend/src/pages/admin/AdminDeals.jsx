@@ -26,9 +26,8 @@ const AdminDeals = () => {
 
   const filteredDeals = deals.filter(deal => 
     deal.Property?.property_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    deal.Owner?.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    deal.Buyer?.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    deal.Tenant?.full_name.toLowerCase().includes(searchTerm.toLowerCase())
+    deal.Seller?.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    deal.Buyer?.full_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -72,7 +71,7 @@ const AdminDeals = () => {
                 <tr key={deal.deal_id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      deal.deal_type === 'Sale' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                      deal.deal_type === 'SALE' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
                     }`}>
                       {deal.deal_type}
                     </span>
@@ -82,16 +81,16 @@ const AdminDeals = () => {
                     <div className="text-sm text-gray-500">ID: {deal.property_id}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">Owner: {deal.Owner?.full_name}</div>
+                    <div className="text-sm text-gray-900">Seller: {deal.Seller?.full_name}</div>
                     <div className="text-sm text-gray-500">
-                      {deal.deal_type === 'Sale' ? `Buyer: ${deal.Buyer?.full_name}` : `Tenant: ${deal.Tenant?.full_name}`}
+                      {deal.deal_type === 'SALE' ? `Buyer: ${deal.Buyer?.full_name}` : `Tenant: ${deal.Buyer?.full_name}`}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    ${deal.deal_amount}
+                    ${deal.price}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(deal.deal_date).toLocaleDateString()}
+                    {new Date(deal.deal_completed_at || deal.createdAt).toLocaleDateString()}
                   </td>
                 </tr>
               ))}

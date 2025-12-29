@@ -95,9 +95,14 @@ class PropertyStore {
     });
     try {
       await axiosInstance.put(`/properties/${id}`, propertyData);
-      await this.fetchProperties();
+      
+      // Removed the full list refetch to avoid overwriting current view state needlessly 
+      // or causing race conditions if the backend takes time to index.
+      // Instead, we just stop loading. The component will handle navigation/refresh.
+      
       runInAction(() => {
         this.error = null;
+        this.loading = false;
       });
       return true;
     } catch (error) {

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
-import MainLayout from '../layouts/MainLayout';
 import DealStore from '../stores/DealStore';
 import PropertyStore from '../stores/PropertyStore';
 import ClientStore from '../stores/ClientStore';
@@ -40,7 +39,7 @@ const AddDeal = () => {
   };
 
   return (
-    <MainLayout>
+    <div>
       <div className="max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">Add Deal</h1>
 
@@ -107,7 +106,7 @@ const AddDeal = () => {
           </Formik>
         </div>
       </div>
-    </MainLayout>
+    </div>
   );
 };
 
