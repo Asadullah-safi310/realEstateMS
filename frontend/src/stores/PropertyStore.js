@@ -74,18 +74,18 @@ class PropertyStore {
       this.loading = true;
     });
     try {
-      await axiosInstance.post('/properties', propertyData);
+      const response = await axiosInstance.post('/properties', propertyData);
       await this.fetchProperties();
       runInAction(() => {
         this.error = null;
       });
-      return true;
+      return response.data;
     } catch (error) {
       runInAction(() => {
         this.error = error.response?.data?.message || error.response?.data?.error || error.message;
         this.loading = false;
       });
-      return false;
+      return null;
     }
   }
 

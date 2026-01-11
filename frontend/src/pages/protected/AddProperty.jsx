@@ -47,6 +47,7 @@ const AddProperty = observer(() => {
     longitude: null,
     is_available_for_sale: false,
     is_available_for_rent: false,
+    is_unavailable: true,
     is_photo_available: false,
     is_attachment_available: false,
     is_video_available: false,
@@ -124,6 +125,7 @@ const AddProperty = observer(() => {
         longitude: property.longitude ? parseFloat(property.longitude) : null,
         is_available_for_sale: property.is_available_for_sale || false,
         is_available_for_rent: property.is_available_for_rent || false,
+        is_unavailable: !(property.is_available_for_sale || property.is_available_for_rent),
         is_photo_available: property.is_photo_available || false,
         is_attachment_available: property.is_attachment_available || false,
         is_video_available: property.is_video_available || false,
@@ -137,7 +139,36 @@ const AddProperty = observer(() => {
 
   const handleFileSelect = (e) => {
     const files = Array.from(e.target.files);
-    setSelectedFiles([...selectedFiles, ...files]);
+    const validFiles = [];
+    const errors = [];
+
+    files.forEach((file) => {
+      const allowedMimes = [
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+        'video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo',
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      ];
+
+      if (!allowedMimes.includes(file.type)) {
+        errors.push(`${file.name}: Invalid file type`);
+      } else if (file.size > 10 * 1024 * 1024) {
+        errors.push(`${file.name}: File size exceeds 10MB limit`);
+      } else {
+        validFiles.push(file);
+      }
+    });
+
+    if (errors.length > 0) {
+      showError(`File validation errors:\n${errors.join('\n')}`);
+    }
+
+    if (validFiles.length > 0) {
+      setSelectedFiles([...selectedFiles, ...validFiles]);
+    }
+
+    e.target.value = '';
   };
 
   const handleUploadFiles = async () => {
@@ -204,16 +235,39 @@ const AddProperty = observer(() => {
       ...values,
     };
 
-    let success;
+    let success = false;
+    let propertyId = id;
+    
     if (id) {
       success = await PropertyStore.updateProperty(id, submissionData);
     } else {
-      success = await PropertyStore.createProperty(submissionData);
+      const createdProperty = await PropertyStore.createProperty(submissionData);
+      if (createdProperty) {
+        success = true;
+        propertyId = createdProperty.id;
+      }
     }
 
     if (success) {
       showSuccess(id ? "successfully Updated" : "Property created successfully");
-      // Force navigation to ensure list refresh or state clear
+      
+      // Upload files if any are selected
+      if (selectedFiles.length > 0 && propertyId) {
+        setUploadingFiles(true);
+        const uploadResult = await PropertyStore.uploadFiles(propertyId, selectedFiles);
+        if (uploadResult) {
+          showSuccess("Files uploaded successfully");
+          setUploadedPhotos(uploadResult.photos || []);
+          setUploadedAttachments(uploadResult.attachments || []);
+          setUploadedVideos(uploadResult.videos || []);
+          setSelectedFiles([]);
+        } else {
+          showError("Error uploading files: " + PropertyStore.error);
+        }
+        setUploadingFiles(false);
+      }
+      
+      // Navigate after all uploads are done
       navigate("/authenticated/properties", { replace: true });
     } else {
       showError("Error: " + PropertyStore.error);
@@ -442,10 +496,42 @@ const AddProperty = observer(() => {
                       <div className="flex items-center h-5">
                         <input
                           type="checkbox"
+                          id="is_unavailable"
+                          name="is_unavailable"
+                          checked={values.is_unavailable}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setFieldValue("is_unavailable", checked);
+                            if (checked) {
+                              setFieldValue("is_available_for_sale", false);
+                              setFieldValue("is_available_for_rent", false);
+                            }
+                          }}
+                          className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label htmlFor="is_unavailable" className="font-medium text-gray-700">Unavailable (Private)</label>
+                        <p className="text-xs text-gray-500">Property will only be visible in your dashboard</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <div className="flex items-center h-5">
+                        <input
+                          type="checkbox"
                           id="is_available_for_sale"
                           name="is_available_for_sale"
                           checked={values.is_available_for_sale}
-                          onChange={(e) => setFieldValue("is_available_for_sale", e.target.checked)}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setFieldValue("is_available_for_sale", checked);
+                            if (checked) {
+                              setFieldValue("is_unavailable", false);
+                            } else if (!values.is_available_for_rent) {
+                              setFieldValue("is_unavailable", true);
+                            }
+                          }}
                           className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                         />
                       </div>
@@ -472,7 +558,15 @@ const AddProperty = observer(() => {
                           id="is_available_for_rent"
                           name="is_available_for_rent"
                           checked={values.is_available_for_rent}
-                          onChange={(e) => setFieldValue("is_available_for_rent", e.target.checked)}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setFieldValue("is_available_for_rent", checked);
+                            if (checked) {
+                              setFieldValue("is_unavailable", false);
+                            } else if (!values.is_available_for_sale) {
+                              setFieldValue("is_unavailable", true);
+                            }
+                          }}
                           className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                         />
                       </div>
@@ -491,22 +585,22 @@ const AddProperty = observer(() => {
                         )}
                       </div>
                     </div>
-                    <ErrorMessage name="at-least-one-availability" component="div" className="text-red-500 text-sm mt-1" />
                   </div>
+                  <ErrorMessage name="at-least-one-availability" component="div" className="text-red-500 text-sm mt-2" />
                 </div>
 
-                {/* File Upload Section - Only visible in Edit Mode */}
-                {id && (
-                  <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                    <h3 className="font-medium text-gray-900 mb-4">Photos & Attachments</h3>
-                    
-                    <div className="mb-4">
-                      <div className="flex items-center gap-4 mb-4">
-                        <label className="cursor-pointer bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2">
-                          <Upload size={20} />
-                          Select Files
-                          <input type="file" multiple onChange={handleFileSelect} className="hidden" />
-                        </label>
+                {/* File Upload Section - Visible in both Add and Edit Mode */}
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <h3 className="font-medium text-gray-900 mb-4">Photos & Attachments</h3>
+                  
+                  <div className="mb-4">
+                    <div className="flex items-center gap-4 mb-4">
+                      <label className="cursor-pointer bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2">
+                        <Upload size={20} />
+                        Select Files
+                        <input type="file" multiple onChange={handleFileSelect} className="hidden" />
+                      </label>
+                      {id && (
                         <button
                           type="button"
                           onClick={handleUploadFiles}
@@ -515,7 +609,11 @@ const AddProperty = observer(() => {
                         >
                           {uploadingFiles ? <Loader2 size={20} className="animate-spin" /> : 'Upload Selected'}
                         </button>
-                      </div>
+                      )}
+                      {!id && selectedFiles.length > 0 && (
+                        <span className="text-sm text-gray-600">Files will be uploaded after property is created</span>
+                      )}
+                    </div>
 
                       {selectedFiles.length > 0 && (
                         <div className="flex flex-wrap gap-2 mb-4">
@@ -572,8 +670,7 @@ const AddProperty = observer(() => {
                         </div>
                       </div>
                     )}
-                  </div>
-                )}
+                </div>
 
                 <div className="flex justify-end gap-4 pt-4">
                   <button
@@ -585,10 +682,10 @@ const AddProperty = observer(() => {
                   </button>
                   <button
                     type="submit"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || uploadingFiles}
                     className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
                   >
-                    {isSubmitting && <Loader2 size={20} className="animate-spin" />}
+                    {(isSubmitting || uploadingFiles) && <Loader2 size={20} className="animate-spin" />}
                     {id ? "Update Property" : "Create Property"}
                   </button>
                 </div>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Calendar, User, Home, MapPin } from 'lucide-react';
 import axiosInstance from '../api/axiosInstance';
+import { getImageUrl, getFileUrl } from '../utils/mediaUtils';
 import PhotoViewer from '../components/PhotoViewer';
 import { VideoPlayer, VideoThumbnail } from '../components/VideoPlayer';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -299,111 +300,117 @@ const PropertyDetails = () => {
           </div>
 
           <div className="lg:col-span-2">
-            {property.is_photo_available && property.photos && property.photos.length > 0 && (
+            {(property.photos?.length > 0 || property.videos?.length > 0 || property.attachments?.length > 0) && (
               <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">📸 Photos</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {property.photos.map((photo, index) => (
-                    <div
-                      key={index}
-                      className="relative bg-gray-100 rounded-lg h-48 overflow-hidden group cursor-pointer hover:shadow-lg transition-shadow"
-                    >
-                      <img
-                        src={`http://localhost:5000${photo}`}
-                        alt={`Property photo ${index + 1}`}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                        onClick={() => {
-                          setSelectedPhotoIndex(index);
-                          setPhotoViewerOpen(true);
-                        }}
-                      />
-                      <button
-                        onClick={() => handleDeleteFile(photo, 'photo')}
-                        disabled={deletingFile === photo}
-                        className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 z-10"
-                        title="Delete photo"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {property.attachments && property.attachments.length > 0 && (
-              <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">📎 Attachments</h2>
-                <div className="space-y-2">
-                  {property.attachments.map((attachment, index) => {
-                    const fileName = attachment.split('/').pop();
-                    const fileType = fileName.split('.').pop().toUpperCase();
-                    return (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between bg-gray-50 p-3 rounded-lg hover:bg-gray-100 transition group"
-                      >
-                        <div className="flex items-center gap-3 flex-1">
-                          <span className="inline-block px-2 py-1 rounded text-xs font-bold bg-blue-100 text-blue-800">
-                            {fileType}
-                          </span>
-                          <span className="text-sm text-gray-700">{fileName}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <a
-                            href={`http://localhost:5000${attachment}`}
-                            download
-                            className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                          >
-                            Download
-                          </a>
+                <h2 className="text-xl font-bold text-gray-900 mb-4">📸 Photos & Attachments</h2>
+                
+                {property.photos && property.photos.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">📸 Images ({property.photos.length})</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {property.photos.map((photo, index) => (
+                        <div
+                          key={index}
+                          className="relative bg-gray-100 rounded-lg h-48 overflow-hidden group cursor-pointer hover:shadow-lg transition-shadow"
+                        >
+                          <img
+                            src={getImageUrl(photo)}
+                            alt={`Property photo ${index + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            onClick={() => {
+                              setSelectedPhotoIndex(index);
+                              setPhotoViewerOpen(true);
+                            }}
+                          />
                           <button
-                            onClick={() => handleDeleteFile(attachment, 'attachment')}
-                            disabled={deletingFile === attachment}
-                            className="text-red-600 hover:text-red-800 font-medium text-sm opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
-                            title="Delete attachment"
+                            onClick={() => handleDeleteFile(photo, 'photo')}
+                            disabled={deletingFile === photo}
+                            className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 z-10"
+                            title="Delete photo"
                           >
-                            Delete
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
                           </button>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {property.is_video_available && property.videos && property.videos.length > 0 && (
-              <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">🎥 Videos</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {property.videos.map((video, index) => (
-                    <div
-                      key={index}
-                      className="relative group"
-                    >
-                      <VideoThumbnail
-                        video={video}
-                        onClick={() => {
-                          setSelectedVideoIndex(index);
-                          setVideoPlayerOpen(true);
-                        }}
-                      />
-                      <button
-                        onClick={() => handleDeleteFile(video, 'video')}
-                        disabled={deletingFile === video}
-                        className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 z-10"
-                        title="Delete video"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )}
+
+                {property.videos && property.videos.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">🎥 Videos ({property.videos.length})</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {property.videos.map((video, index) => (
+                        <div
+                          key={index}
+                          className="relative group"
+                        >
+                          <VideoThumbnail
+                            video={video}
+                            onClick={() => {
+                              setSelectedVideoIndex(index);
+                              setVideoPlayerOpen(true);
+                            }}
+                          />
+                          <button
+                            onClick={() => handleDeleteFile(video, 'video')}
+                            disabled={deletingFile === video}
+                            className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 z-10"
+                            title="Delete video"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {property.attachments && property.attachments.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">📎 Files ({property.attachments.length})</h3>
+                    <div className="space-y-2">
+                      {property.attachments.map((attachment, index) => {
+                        const fileName = attachment.split('/').pop();
+                        const fileType = fileName.split('.').pop().toUpperCase();
+                        return (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between bg-gray-50 p-3 rounded-lg hover:bg-gray-100 transition group"
+                          >
+                            <div className="flex items-center gap-3 flex-1">
+                              <span className="inline-block px-2 py-1 rounded text-xs font-bold bg-blue-100 text-blue-800">
+                                {fileType}
+                              </span>
+                              <span className="text-sm text-gray-700">{fileName}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <a
+                                href={getFileUrl(attachment)}
+                                download
+                                className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                              >
+                                Download
+                              </a>
+                              <button
+                                onClick={() => handleDeleteFile(attachment, 'attachment')}
+                                disabled={deletingFile === attachment}
+                                className="text-red-600 hover:text-red-800 font-medium text-sm opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                                title="Delete attachment"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

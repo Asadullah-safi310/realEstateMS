@@ -34,6 +34,7 @@ const createProperty = async (req, res) => {
       longitude, 
       is_available_for_sale, 
       is_available_for_rent, 
+      is_unavailable,
       is_photo_available, 
       is_attachment_available, 
       is_video_available, 
@@ -72,6 +73,7 @@ const createProperty = async (req, res) => {
       status: 'available',
       is_available_for_sale: is_available_for_sale === true || is_available_for_sale === 'true' ? true : false,
       is_available_for_rent: is_available_for_rent === true || is_available_for_rent === 'true' ? true : false,
+      is_unavailable: is_unavailable === true || is_unavailable === 'true' ? true : false,
       is_photo_available: is_photo_available === true || is_photo_available === 'true' ? true : false,
       is_attachment_available: is_attachment_available === true || is_attachment_available === 'true' ? true : false,
       is_video_available: is_video_available === true || is_video_available === 'true' ? true : false,
@@ -172,7 +174,6 @@ const searchProperties = async (req, res) => {
     const where = {};
 
     const publicCriteria = { 
-      status: 'available',
       [Op.or]: [
         { is_available_for_sale: true },
         { is_available_for_rent: true }
@@ -251,7 +252,7 @@ const updateProperty = async (req, res) => {
 
   try {
     const { id } = req.params;
-    const { owner_person_id, agent_id, property_type, purpose, sale_price, rent_price, location, address, province_id, district_id, area_id, city, area_size, bedrooms, bathrooms, description, latitude, longitude, is_available_for_sale, is_available_for_rent, is_photo_available, is_attachment_available, is_video_available } = req.body;
+    const { owner_person_id, agent_id, property_type, purpose, sale_price, rent_price, location, address, province_id, district_id, area_id, city, area_size, bedrooms, bathrooms, description, latitude, longitude, is_available_for_sale, is_available_for_rent, is_unavailable, is_photo_available, is_attachment_available, is_video_available } = req.body;
 
     const property = await Property.findByPk(id);
     if (!property) {
@@ -284,6 +285,7 @@ const updateProperty = async (req, res) => {
       longitude: longitude || null,
       is_available_for_sale: is_available_for_sale === true || is_available_for_sale === 'true' ? true : false,
       is_available_for_rent: is_available_for_rent === true || is_available_for_rent === 'true' ? true : false,
+      is_unavailable: is_unavailable === true || is_unavailable === 'true' ? true : false,
       is_photo_available: is_photo_available === true || is_photo_available === 'true' ? true : false,
       is_attachment_available: is_attachment_available === true || is_attachment_available === 'true' ? true : false,
       is_video_available: is_video_available === true || is_video_available === 'true' ? true : false,
@@ -596,7 +598,6 @@ const getPublicProperties = async (req, res) => {
     const { limit } = req.query;
     const properties = await Property.findAll({
       where: {
-        status: 'available',
         [Op.or]: [
           { is_available_for_sale: true },
           { is_available_for_rent: true }
@@ -640,7 +641,6 @@ const getPublicPropertiesByUser = async (req, res) => {
     }
 
     const where = {
-      status: 'available',
       [Op.or]: [
         { is_available_for_sale: true },
         { is_available_for_rent: true }

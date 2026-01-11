@@ -10,7 +10,7 @@ import { showSuccess, showError } from '../../utils/toast';
 const profileSchema = Yup.object({
   full_name: Yup.string().required('Full name is required'),
   phone: Yup.string().required('Phone is required'),
-  email: Yup.string().email('Invalid email').required('Email is required'),
+  email: Yup.string().email('Invalid email').nullable(),
   address: Yup.string(),
   national_id: Yup.string(),
 });
@@ -40,7 +40,8 @@ const ProfileManagement = observer(() => {
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">{user.full_name}</h2>
-              <p className="text-blue-600">{user.email}</p>
+              <p className="text-blue-600">{user.phone}</p>
+              {user.email && <p className="text-gray-500 text-sm">{user.email}</p>}
             </div>
           </div>
 

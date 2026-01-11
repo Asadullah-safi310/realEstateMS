@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getImageUrl } from '../utils/mediaUtils';
 
 const ImageCarousel = ({ images = [], title = 'Photos', autoSlide = true, autoSlideInterval = 5000 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -55,7 +56,7 @@ const ImageCarousel = ({ images = [], title = 'Photos', autoSlide = true, autoSl
     <div className="relative w-full bg-gray-900 rounded-t-xl overflow-hidden shadow-lg">
       <div className="relative h-64 md:h-96 w-full bg-black">
         <img
-          src={`http://localhost:5000${currentImage}`}
+          src={getImageUrl(currentImage)}
           alt={`${title} ${currentIndex + 1}`}
           className="w-full h-full object-cover transition-opacity duration-500"
           onError={(e) => {

@@ -7,6 +7,7 @@ import PersonStore from "../stores/PersonStore";
 import { propertySchema } from "../validation/schemas";
 import useTranslation from "../hooks/useTranslation";
 import { showSuccess, showError } from "../utils/toast";
+import { getImageUrl, validateFileSize, validateFileType, getFileTypeCategory, getFileExtension, getFileSizeDisplay } from "../utils/mediaUtils";
 import ConfirmDialog from "../components/ConfirmDialog";
 import LocationPicker from "../components/LocationPicker";
 
@@ -85,7 +86,31 @@ const AddProperty = observer(() => {
 
   const handleFileSelect = (e) => {
     const files = Array.from(e.target.files);
-    setSelectedFiles([...selectedFiles, ...files]);
+    const validFiles = [];
+    const errors = [];
+
+    files.forEach((file) => {
+      if (!validateFileType(file)) {
+        errors.push(`${file.name}: Invalid file type`);
+      } else if (!validateFileSize(file)) {
+        errors.push(`${file.name}: File size exceeds 10MB limit`);
+      } else {
+        validFiles.push(file);
+      }
+    });
+
+    if (errors.length > 0) {
+      showError(`File validation errors:\n${errors.join('\n')}`);
+    }
+
+    if (validFiles.length > 0) {
+      setSelectedFiles([...selectedFiles, ...validFiles]);
+      if (errors.length === 0) {
+        showSuccess(`${validFiles.length} file(s) selected`);
+      }
+    }
+
+    e.target.value = '';
   };
 
   const handleUploadFiles = async () => {
@@ -166,12 +191,18 @@ const AddProperty = observer(() => {
       return;
     }
 
-    console.log("Form submitted with values:", values);
+    const submitData = {
+      ...values,
+      latitude: values.latitude === "" || values.latitude === null ? null : parseFloat(values.latitude),
+      longitude: values.longitude === "" || values.longitude === null ? null : parseFloat(values.longitude),
+    };
+
+    console.log("Form submitted with values:", submitData);
     let success;
     if (id) {
-      success = await PropertyStore.updateProperty(id, values);
+      success = await PropertyStore.updateProperty(id, submitData);
     } else {
-      success = await PropertyStore.createProperty(values);
+      success = await PropertyStore.createProperty(submitData);
     }
 
     if (success) {
@@ -631,194 +662,222 @@ const AddProperty = observer(() => {
                     />
                   </div>
                 )}
-                {(values.is_photo_available || values.is_attachment_available || values.is_video_available) && (
-                  <div className="mb-4">
-                    <label className="block text-gray-700 text-sm font-semibold mb-2">
-                      📁 Media Upload
-                    </label>
-                    <div className="border-2 border-dashed border-gray-300 rounded p-4 mb-3">
-                      <input
-                        type="file"
-                        multiple
-                        onChange={handleFileSelect}
-                        accept={`${values.is_photo_available ? 'image/*' : ''}${(values.is_photo_available || values.is_video_available) && values.is_attachment_available ? ',' : ''}${values.is_video_available ? 'video/*' : ''}${(values.is_photo_available || values.is_video_available) && values.is_attachment_available ? ',' : ''}${values.is_attachment_available ? '.pdf,.doc,.docx,.xls,.xlsx' : ''}`}
-                        className="w-full"
-                      />
-                      <p className="text-gray-500 text-xs mt-2">
-                        {values.is_photo_available && values.is_attachment_available && values.is_video_available
-                          ? 'Select images, videos, or documents'
-                          : values.is_photo_available && values.is_video_available
-                          ? 'Select images or videos'
-                          : values.is_photo_available && values.is_attachment_available
-                          ? 'Select images or documents'
-                          : values.is_video_available && values.is_attachment_available
-                          ? 'Select videos or documents'
-                          : values.is_photo_available
-                          ? 'Select images only'
-                          : values.is_video_available
-                          ? 'Select videos only'
-                          : 'Select documents only'}
-                      </p>
-                    </div>
+
+                <div className="mb-4">
+                  <label className="block text-gray-700 text-sm font-semibold mb-2">
+                    📁 Media Upload (Optional)
+                  </label>
+                  <div className="border-2 border-dashed border-gray-300 rounded p-4 mb-3 bg-gray-50">
+                    <input
+                      type="file"
+                      multiple
+                      onChange={handleFileSelect}
+                      accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.mov,.avi,.mkv,.flv,.wmv,.mts,.m4v"
+                      className="w-full"
+                    />
+                    <p className="text-gray-600 text-xs mt-3 font-medium">
+                      📸 Supported: Images (JPG, PNG, GIF, WebP) • 🎥 Videos (MP4, WebM, AVI, QuickTime) • 📄 Documents (PDF, Word, Excel)
+                    </p>
+                    <p className="text-gray-500 text-xs mt-1">
+                      Max file size: 10MB per file. Check media availability options above to categorize uploads.
+                    </p>
+                  </div>
 
                     {selectedFiles.length > 0 && (
                       <div className="mb-3">
                         <h4 className="text-sm font-semibold text-gray-700 mb-2">
                           Selected Files ({selectedFiles.length})
                         </h4>
-                        <ul className="space-y-2">
-                          {selectedFiles.map((file, index) => (
-                            <li
-                              key={index}
-                              className="flex justify-between items-center bg-gray-50 p-2 rounded"
-                            >
-                              <span className="text-sm text-gray-700">
-                                {file.name}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => removeFile(index)}
-                                className="text-red-600 hover:text-red-800 text-xs font-semibold"
+                        <div className="space-y-2">
+                          {selectedFiles.map((file, index) => {
+                            const fileType = getFileTypeCategory(file);
+                            const isImage = fileType === 'image';
+                            const preview = isImage ? URL.createObjectURL(file) : null;
+
+                            return (
+                              <div
+                                key={index}
+                                className="flex gap-3 bg-gray-50 p-3 rounded border border-gray-200 hover:border-blue-300 transition"
                               >
-                                Remove
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
+                                {isImage && preview ? (
+                                  <img
+                                    src={preview}
+                                    alt={file.name}
+                                    className="w-16 h-16 object-cover rounded flex-shrink-0"
+                                  />
+                                ) : (
+                                  <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center flex-shrink-0">
+                                    <span className="text-xs font-bold text-gray-600">
+                                      {getFileExtension(file.name)}
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-900 truncate">
+                                    {file.name}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {getFileSizeDisplay(file.size)} • {fileType}
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => removeFile(index)}
+                                  className="text-red-600 hover:text-red-800 px-2 flex-shrink-0"
+                                  title="Remove file"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
                         <button
                           type="button"
                           onClick={handleUploadFiles}
                           disabled={uploadingFiles}
-                          className="mt-3 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-semibold disabled:opacity-50"
+                          className="mt-3 w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-4 py-2 rounded text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
                         >
-                          {uploadingFiles ? "Uploading..." : "Upload Files"}
+                          {uploadingFiles ? (
+                            <>
+                              <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                              </svg>
+                              Uploading...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                              </svg>
+                              Upload Files
+                            </>
+                          )}
                         </button>
                       </div>
                     )}
 
-                    {uploadedPhotos.length > 0 && values.is_photo_available && (
-                      <div>
-                        <h4 className="text-sm font-semibold text-gray-700 mb-2">
-                          📸 Uploaded Photos ({uploadedPhotos.length})
-                        </h4>
-                        <div className="grid grid-cols-3 gap-2">
-                          {uploadedPhotos.map((photo, index) => (
-                            <div
-                              key={index}
-                              className="relative bg-gray-100 rounded h-32 overflow-hidden group cursor-pointer"
+                  {uploadedPhotos.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                        📸 Uploaded Photos ({uploadedPhotos.length})
+                      </h4>
+                      <div className="grid grid-cols-3 gap-2">
+                        {uploadedPhotos.map((photo, index) => (
+                          <div
+                            key={index}
+                            className="relative bg-gray-100 rounded h-32 overflow-hidden group cursor-pointer"
+                          >
+                            <img
+                              src={getImageUrl(photo)}
+                              alt={`Property photo ${index + 1}`}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteUploadedFile(photo, 'photo')}
+                              disabled={deletingFile === photo}
+                              className="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                              title="Delete photo"
                             >
-                              <img
-                                src={`http://localhost:5000${photo}`}
-                                alt={`Property photo ${index + 1}`}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteUploadedFile(photo, 'photo')}
-                                disabled={deletingFile === photo}
-                                className="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
-                                title="Delete photo"
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-gray-700 text-sm font-semibold mb-2">
+                    📎 Uploaded Attachments
+                  </label>
+                  {uploadedAttachments.length > 0 ? (
+                    <div className="space-y-2">
+                      {uploadedAttachments.map((attachment, index) => {
+                        const fileName = attachment.split('/').pop();
+                        const fileType = fileName.split('.').pop().toUpperCase();
+                        return (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between bg-gray-50 p-3 rounded-lg hover:bg-gray-100 transition group"
+                          >
+                            <div className="flex items-center gap-3 flex-1">
+                              <span className="inline-block px-2 py-1 rounded text-xs font-bold bg-blue-100 text-blue-800">
+                                {fileType}
+                              </span>
+                              <span className="text-sm text-gray-700">{fileName}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <a
+                                href={getFileUrl(attachment)}
+                                download
+                                className="text-blue-600 hover:text-blue-800 font-medium text-sm"
                               >
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {values.is_attachment_available && (
-                  <div className="mb-4">
-                    <label className="block text-gray-700 text-sm font-semibold mb-2">
-                      📎 Uploaded Attachments
-                    </label>
-                    {uploadedAttachments.length > 0 ? (
-                      <div className="space-y-2">
-                        {uploadedAttachments.map((attachment, index) => {
-                          const fileName = attachment.split('/').pop();
-                          const fileType = fileName.split('.').pop().toUpperCase();
-                          return (
-                            <div
-                              key={index}
-                              className="flex items-center justify-between bg-gray-50 p-3 rounded-lg hover:bg-gray-100 transition group"
-                            >
-                              <div className="flex items-center gap-3 flex-1">
-                                <span className="inline-block px-2 py-1 rounded text-xs font-bold bg-blue-100 text-blue-800">
-                                  {fileType}
-                                </span>
-                                <span className="text-sm text-gray-700">{fileName}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <a
-                                  href={`http://localhost:5000${attachment}`}
-                                  download
-                                  className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                                >
-                                  Download
-                                </a>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteUploadedFile(attachment, 'attachment')}
-                                  disabled={deletingFile === attachment}
-                                  className="text-red-600 hover:text-red-800 font-medium text-sm opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
-                                  title="Delete attachment"
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="text-gray-500 text-sm italic">No attachments uploaded yet</p>
-                    )}
-                  </div>
-                )}
-
-                {values.is_video_available && (
-                  <div className="mb-4">
-                    <label className="block text-gray-700 text-sm font-semibold mb-2">
-                      🎥 Uploaded Videos
-                    </label>
-                    {uploadedVideos.length > 0 ? (
-                      <div className="space-y-2">
-                        {uploadedVideos.map((video, index) => {
-                          const fileName = video.split('/').pop();
-                          const isYouTube = video.includes('youtube.com') || video.includes('youtu.be');
-                          return (
-                            <div
-                              key={index}
-                              className="flex items-center justify-between bg-gray-50 p-3 rounded-lg hover:bg-gray-100 transition group"
-                            >
-                              <div className="flex items-center gap-3 flex-1">
-                                <span className={`inline-block px-2 py-1 rounded text-xs font-bold ${isYouTube ? 'bg-red-100 text-red-800' : 'bg-purple-100 text-purple-800'}`}>
-                                  {isYouTube ? 'YOUTUBE' : 'VIDEO'}
-                                </span>
-                                <span className="text-sm text-gray-700">{fileName}</span>
-                              </div>
+                                Download
+                              </a>
                               <button
                                 type="button"
-                                onClick={() => handleDeleteUploadedFile(video, 'video')}
-                                disabled={deletingFile === video}
+                                onClick={() => handleDeleteUploadedFile(attachment, 'attachment')}
+                                disabled={deletingFile === attachment}
                                 className="text-red-600 hover:text-red-800 font-medium text-sm opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
-                                title="Delete video"
+                                title="Delete attachment"
                               >
                                 Delete
                               </button>
                             </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="text-gray-500 text-sm italic">No videos uploaded yet</p>
-                    )}
-                  </div>
-                )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-sm italic">No attachments uploaded yet</p>
+                  )}
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-gray-700 text-sm font-semibold mb-2">
+                    🎥 Uploaded Videos
+                  </label>
+                  {uploadedVideos.length > 0 ? (
+                    <div className="space-y-2">
+                      {uploadedVideos.map((video, index) => {
+                        const fileName = video.split('/').pop();
+                        const isYouTube = video.includes('youtube.com') || video.includes('youtu.be');
+                        return (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between bg-gray-50 p-3 rounded-lg hover:bg-gray-100 transition group"
+                          >
+                            <div className="flex items-center gap-3 flex-1">
+                              <span className={`inline-block px-2 py-1 rounded text-xs font-bold ${isYouTube ? 'bg-red-100 text-red-800' : 'bg-purple-100 text-purple-800'}`}>
+                                {isYouTube ? 'YOUTUBE' : 'VIDEO'}
+                              </span>
+                              <span className="text-sm text-gray-700">{fileName}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteUploadedFile(video, 'video')}
+                              disabled={deletingFile === video}
+                              className="text-red-600 hover:text-red-800 font-medium text-sm opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                              title="Delete video"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-sm italic">No videos uploaded yet</p>
+                  )}
+                </div>
 
                 <div className="flex gap-4">
                   <button

@@ -1,4 +1,5 @@
 const { User } = require('../models');
+const { Op } = require('sequelize');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
@@ -12,10 +13,30 @@ exports.register = async (req, res) => {
   try {
     const { username, email, password, full_name, phone } = req.body;
 
-    const userExists = await User.findOne({ where: { email } });
+    if (!phone) {
+      return res.status(400).json({ message: 'Phone number is required' });
+    }
+
+    const userExists = await User.findOne({ 
+      where: { 
+        [Op.or]: [
+          { phone },
+          ...(email ? [{ email }] : []),
+          { username }
+        ]
+      } 
+    });
 
     if (userExists) {
-      return res.status(400).json({ message: 'User already exists' });
+      if (userExists.phone === phone) {
+        return res.status(400).json({ message: 'User with this phone number already exists' });
+      }
+      if (email && userExists.email === email) {
+        return res.status(400).json({ message: 'User with this email already exists' });
+      }
+      if (userExists.username === username) {
+        return res.status(400).json({ message: 'Username already taken' });
+      }
     }
 
     const user = await User.create({
@@ -55,9 +76,13 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { phone, password } = req.body;
 
-    const user = await User.findOne({ where: { email } });
+    if (!phone) {
+      return res.status(400).json({ message: 'Phone number is required' });
+    }
+
+    const user = await User.findOne({ where: { phone } });
 
     if (user && (await user.validatePassword(password))) {
       const token = generateToken(user.user_id);
@@ -78,7 +103,7 @@ exports.login = async (req, res) => {
         token,
       });
     } else {
-      res.status(401).json({ message: 'Invalid email or password' });
+      res.status(401).json({ message: 'Invalid phone number or password' });
     }
   } catch (error) {
     console.error(error);

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { useNavigate } from 'react-router-dom';
-import { Lock, User, Loader2, AlertCircle } from 'lucide-react';
+import { Lock, Phone, Loader2, AlertCircle } from 'lucide-react';
 import authStore from '../../stores/AuthStore';
 
 const AdminLogin = observer(() => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   
@@ -21,7 +21,7 @@ const AdminLogin = observer(() => {
     e.preventDefault();
     setError('');
     
-    const success = await authStore.login(email, password);
+    const success = await authStore.login(phone, password);
     
     if (success) {
       if (authStore.user?.role === 'admin') {
@@ -54,18 +54,18 @@ const AdminLogin = observer(() => {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User size={18} className="text-gray-400" />
+                  <Phone size={18} className="text-gray-400" />
                 </div>
                 <input
-                  type="email"
+                  type="tel"
                   required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
                   className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  placeholder="admin@example.com"
+                  placeholder="+1 (555) 000-0000"
                 />
               </div>
             </div>

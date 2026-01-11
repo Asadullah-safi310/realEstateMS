@@ -34,11 +34,11 @@ class AuthStore {
     }
   };
 
-  login = async (email, password) => {
+  login = async (phone, password) => {
     this.isLoading = true;
     this.error = null;
     try {
-      const response = await axiosInstance.post('/auth/login', { email, password });
+      const response = await axiosInstance.post('/auth/login', { phone, password });
       runInAction(() => {
         this.user = response.data;
         this.isAuthenticated = true;
@@ -54,7 +54,7 @@ class AuthStore {
     }
   };
 
-  register = async (userData) => {
+  register = async (userData) => { 
     this.isLoading = true;
     this.error = null;
     try {

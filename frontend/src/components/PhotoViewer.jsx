@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { getImageUrl } from '../utils/mediaUtils';
 
 const PhotoViewer = ({ photos, isOpen, onClose, initialIndex = 0 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
@@ -78,7 +79,7 @@ const PhotoViewer = ({ photos, isOpen, onClose, initialIndex = 0 }) => {
       >
         <div className="relative w-11/12 h-5/6 flex items-center justify-center overflow-hidden rounded-lg">
           <img
-            src={`http://localhost:5000${currentPhoto}`}
+            src={getImageUrl(currentPhoto)}
             alt={`Photo ${currentIndex + 1}`}
             style={{
               transform: `scale(${zoom / 100})`,

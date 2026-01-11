@@ -28,6 +28,12 @@ const createDeal = async (req, res) => {
       return res.status(404).json({ error: 'Property not found' });
     }
 
+    // Backend enforcement: Deal creation is allowed only if the property is available for sale or rent.
+    if (!property.is_available_for_sale && !property.is_available_for_rent) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Deal creation is allowed only if the property is available for sale or rent.' });
+    }
+
     // Check if the logged-in user is an agent or admin
     if (req.user.role !== 'agent' && req.user.role !== 'admin') {
       await transaction.rollback();

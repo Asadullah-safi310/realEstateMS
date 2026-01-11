@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, Phone, MapPin, Home, Users, Key, Calendar, FileText, ExternalLink, ShieldCheck } from 'lucide-react';
 import axiosInstance from '../api/axiosInstance';
+import { getImageUrl, getFileUrl } from '../utils/mediaUtils';
 
 const PersonDetails = () => {
   const { id } = useParams();
@@ -150,7 +151,7 @@ const PersonDetails = () => {
                 <div className="aspect-video bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center relative group overflow-hidden">
                   {person.id_card_path.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                     <img 
-                      src={`http://localhost:5000${person.id_card_path}`} 
+                      src={getImageUrl(person.id_card_path)} 
                       alt="ID Card" 
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
@@ -162,7 +163,7 @@ const PersonDetails = () => {
                   )}
                   <div className="absolute inset-0 bg-blue-600/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <a 
-                      href={`http://localhost:5000${person.id_card_path}`} 
+                      href={getFileUrl(person.id_card_path)} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="bg-white text-blue-600 p-3 rounded-full shadow-xl transform scale-75 group-hover:scale-100 transition-transform duration-300"
@@ -198,7 +199,7 @@ const PersonDetails = () => {
                 <div className="flex flex-col md:flex-row gap-8">
                   <div className="w-full md:w-1/3 aspect-[4/3] rounded-2xl bg-gray-100 overflow-hidden">
                     {rentedProperty.photos?.[0] ? (
-                      <img src={`http://localhost:5000${rentedProperty.photos[0]}`} alt="Property" className="w-full h-full object-cover" />
+                      <img src={getImageUrl(rentedProperty.photos[0])} alt="Property" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-300"><Home size={40} /></div>
                     )}
@@ -251,7 +252,7 @@ const PersonDetails = () => {
                   >
                     <div className="h-48 bg-gray-100 relative">
                       {property.photos?.[0] ? (
-                        <img src={`http://localhost:5000${property.photos[0]}`} alt="Property" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        <img src={getImageUrl(property.photos[0])} alt="Property" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-gray-300"><Home size={40} /></div>
                       )}

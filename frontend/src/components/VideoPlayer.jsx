@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X, Play } from 'lucide-react';
+import { getFileUrl } from '../utils/mediaUtils';
 
 const VideoPlayer = ({ videos, isOpen, onClose, initialIndex = 0 }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
@@ -29,7 +30,7 @@ const VideoPlayer = ({ videos, isOpen, onClose, initialIndex = 0 }) => {
 
   const currentVideo = videos[currentIndex];
   const isYouTube = isYouTubeUrl(currentVideo);
-  const videoUrl = isYouTube ? getYouTubeEmbedUrl(currentVideo) : `http://localhost:5000${currentVideo}`;
+  const videoUrl = isYouTube ? getYouTubeEmbedUrl(currentVideo) : getFileUrl(currentVideo);
 
   const handleNext = () => {
     setCurrentIndex((prev) => (prev + 1) % videos.length);
@@ -146,7 +147,7 @@ const VideoThumbnail = ({ video, onClick }) => {
       ) : (
         <>
           <video
-            src={`http://localhost:5000${video}`}
+            src={getFileUrl(video)}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform"
           />
         </>

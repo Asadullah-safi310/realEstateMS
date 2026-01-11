@@ -7,32 +7,32 @@ const createAdmin = async () => {
     await sequelize.authenticate();
     console.log('Database connected.');
 
+    const adminPhone = '0000000000';
     const adminEmail = 'admin@realestate.com';
     const adminPassword = 'admin123';
     const adminUsername = 'admin';
 
     // Check if admin exists
-    const existingAdmin = await User.findOne({ where: { email: adminEmail } });
+    const existingAdmin = await User.findOne({ where: { phone: adminPhone } });
 
     if (existingAdmin) {
       console.log('Admin user already exists.');
       // Update to ensure role is admin
       existingAdmin.role = 'admin';
-      // Reset password if needed (optional, but good for "what is my password" requests)
       existingAdmin.password_hash = adminPassword; // Hook will hash this
       await existingAdmin.save();
-      console.log(`Admin user updated. Email: ${adminEmail}, Password: ${adminPassword}`);
+      console.log(`Admin user updated. Phone: ${adminPhone}, Password: ${adminPassword}`);
     } else {
       await User.create({
         username: adminUsername,
         email: adminEmail,
         password_hash: adminPassword, // Hook will hash this
         full_name: 'System Administrator',
-        phone: '0000000000',
+        phone: adminPhone,
         role: 'admin',
         is_active: true
       });
-      console.log(`Admin user created. Email: ${adminEmail}, Password: ${adminPassword}`);
+      console.log(`Admin user created. Phone: ${adminPhone}, Password: ${adminPassword}`);
     }
 
   } catch (error) {

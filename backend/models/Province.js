@@ -10,7 +10,6 @@ const Province = sequelize.define('Province', {
   name: {
     type: DataTypes.STRING(100),
     allowNull: false,
-    unique: true,
   },
   native_name: {
     type: DataTypes.STRING(100),

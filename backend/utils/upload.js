@@ -28,15 +28,25 @@ const fileFilter = (req, file, cb) => {
     'video/webm',
     'video/quicktime',
     'video/x-msvideo',
+    'video/avi',
+    'video/x-avi',
     'application/pdf',
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   ];
 
   if (allowedMimes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Invalid file type'), false);
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'webm', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'mts', 'm4v', 'pdf', 'doc', 'docx', 'xls', 'xlsx'];
+    const ext = file.originalname.toLowerCase().split('.').pop();
+    if (allowedExtensions.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type'), false);
+    }
   }
 };
 

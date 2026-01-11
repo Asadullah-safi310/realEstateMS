@@ -4,6 +4,8 @@ import { observer } from 'mobx-react-lite';
 import { MapPin, Bed, Bath, Square, User, Phone, Mail, Calendar, Loader2, ArrowLeft } from 'lucide-react';
 import axiosInstance from '../api/axiosInstance';
 import ImageCarousel from '../components/ImageCarousel';
+import { VideoThumbnail, VideoPlayer } from '../components/VideoPlayer';
+import { getFileUrl } from '../utils/mediaUtils';
 import authStore from '../stores/AuthStore';
 
 const PublicPropertyDetails = observer(() => {
@@ -13,6 +15,9 @@ const PublicPropertyDetails = observer(() => {
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [videoPlayerOpen, setVideoPlayerOpen] = useState(false);
+  const [selectedVideoIndex, setSelectedVideoIndex] = useState(0);
+  const [deletingFile, setDeletingFile] = useState(null);
 
   useEffect(() => {
     const fetchProperty = async () => {
@@ -29,6 +34,52 @@ const PublicPropertyDetails = observer(() => {
 
     fetchProperty();
   }, [id]);
+
+  const handleDeleteAttachment = async (attachment) => {
+    if (!window.confirm('Are you sure you want to delete this attachment?')) {
+      return;
+    }
+
+    setDeletingFile(attachment);
+    try {
+      await axiosInstance.delete(`/properties/${id}/file`, {
+        data: { fileUrl: attachment, type: 'attachment' },
+      });
+
+      setProperty(prev => ({
+        ...prev,
+        attachments: (prev.attachments || []).filter(a => a !== attachment),
+      }));
+    } catch (err) {
+      console.error('Error deleting attachment:', err);
+      alert('Failed to delete attachment');
+    } finally {
+      setDeletingFile(null);
+    }
+  };
+
+  const handleDeleteVideo = async (video) => {
+    if (!window.confirm('Are you sure you want to delete this video?')) {
+      return;
+    }
+
+    setDeletingFile(video);
+    try {
+      await axiosInstance.delete(`/properties/${id}/file`, {
+        data: { fileUrl: video, type: 'video' },
+      });
+
+      setProperty(prev => ({
+        ...prev,
+        videos: (prev.videos || []).filter(v => v !== video),
+      }));
+    } catch (err) {
+      console.error('Error deleting video:', err);
+      alert('Failed to delete video');
+    } finally {
+      setDeletingFile(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -62,6 +113,8 @@ const PublicPropertyDetails = observer(() => {
     area_size,
     description,
     photos,
+    videos,
+    attachments,
     current_owner,
     Agent,
     Creator,
@@ -206,6 +259,90 @@ const PublicPropertyDetails = observer(() => {
                 </div>
               </div>
             </div>
+
+            {(videos?.length > 0 || attachments?.length > 0) && (
+              <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
+                <h2 className="text-xl font-bold text-gray-900 mb-6">📸 Videos & Attachments</h2>
+                
+                {videos && videos.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">🎥 Videos ({videos.length})</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {videos.map((video, index) => (
+                        <div
+                          key={index}
+                          className="relative group"
+                        >
+                          <VideoThumbnail
+                            video={video}
+                            onClick={() => {
+                              setSelectedVideoIndex(index);
+                              setVideoPlayerOpen(true);
+                            }}
+                          />
+                          {authStore.isAuthenticated && (authStore.user?.role === 'admin' || authStore.user?.role === 'agent') && (
+                            <button
+                              onClick={() => handleDeleteVideo(video)}
+                              disabled={deletingFile === video}
+                              className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 z-10"
+                              title="Delete video"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {attachments && attachments.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">📎 Files ({attachments.length})</h3>
+                    <div className="space-y-2">
+                      {attachments.map((attachment, index) => {
+                        const fileName = attachment.split('/').pop();
+                        const fileType = fileName.split('.').pop().toUpperCase();
+                        return (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between bg-gray-50 p-3 rounded-lg hover:bg-gray-100 transition group"
+                          >
+                            <div className="flex items-center gap-3 flex-1">
+                              <span className="inline-block px-2 py-1 rounded text-xs font-bold bg-blue-100 text-blue-800">
+                                {fileType}
+                              </span>
+                              <span className="text-sm text-gray-700">{fileName}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <a
+                                href={getFileUrl(attachment)}
+                                download
+                                className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                              >
+                                Download
+                              </a>
+                              {authStore.isAuthenticated && (authStore.user?.role === 'admin' || authStore.user?.role === 'agent') && (
+                                <button
+                                  onClick={() => handleDeleteAttachment(attachment)}
+                                  disabled={deletingFile === attachment}
+                                  className="text-red-600 hover:text-red-800 font-medium text-sm opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                                  title="Delete attachment"
+                                >
+                                  Delete
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Right Column: Sidebar */}
@@ -245,6 +382,13 @@ const PublicPropertyDetails = observer(() => {
 
         </div>
       </div>
+
+      <VideoPlayer
+        videos={videos || []}
+        isOpen={videoPlayerOpen}
+        onClose={() => setVideoPlayerOpen(false)}
+        initialIndex={selectedVideoIndex}
+      />
     </div>
   );
 });

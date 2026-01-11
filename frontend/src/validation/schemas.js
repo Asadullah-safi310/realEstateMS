@@ -43,17 +43,18 @@ export const propertySchema = Yup.object({
   bedrooms: Yup.number().transform((value, originalValue) => originalValue === "" ? null : value).nullable(),
   bathrooms: Yup.number().transform((value, originalValue) => originalValue === "" ? null : value).nullable(),
   description: Yup.string(),
-  latitude: Yup.number().transform((value, originalValue) => originalValue === "" ? null : value).required('Please select a location on the map').typeError('Latitude must be a number'),
-  longitude: Yup.number().transform((value, originalValue) => originalValue === "" ? null : value).required('Please select a location on the map').typeError('Longitude must be a number'),
+  latitude: Yup.number().transform((value, originalValue) => originalValue === "" ? null : value).nullable().typeError('Latitude must be a number'),
+  longitude: Yup.number().transform((value, originalValue) => originalValue === "" ? null : value).nullable().typeError('Longitude must be a number'),
   is_available_for_sale: Yup.boolean(),
   is_available_for_rent: Yup.boolean(),
+  is_unavailable: Yup.boolean(),
   is_photo_available: Yup.boolean(),
   is_attachment_available: Yup.boolean(),
   is_video_available: Yup.boolean(),
   videos: Yup.array(),
 }).test('at-least-one-availability', function(value) {
-  if (!value?.is_available_for_sale && !value?.is_available_for_rent) {
-    return this.createError({ path: 'at-least-one-availability', message: 'At least one availability option must be selected' });
+  if (!value?.is_available_for_sale && !value?.is_available_for_rent && !value?.is_unavailable) {
+    return this.createError({ path: 'at-least-one-availability', message: 'Please select availability status' });
   }
   return true;
 });
@@ -90,17 +91,18 @@ export const userPropertySchema = Yup.object({
   bedrooms: Yup.number().transform((value, originalValue) => originalValue === "" ? null : value).nullable(),
   bathrooms: Yup.number().transform((value, originalValue) => originalValue === "" ? null : value).nullable(),
   description: Yup.string(),
-  latitude: Yup.number().transform((value, originalValue) => originalValue === "" ? null : value).required('Please select a location on the map').typeError('Latitude must be a number'),
-  longitude: Yup.number().transform((value, originalValue) => originalValue === "" ? null : value).required('Please select a location on the map').typeError('Longitude must be a number'),
+  latitude: Yup.number().transform((value, originalValue) => originalValue === "" ? null : value).nullable().typeError('Latitude must be a number'),
+  longitude: Yup.number().transform((value, originalValue) => originalValue === "" ? null : value).nullable().typeError('Longitude must be a number'),
   is_available_for_sale: Yup.boolean(),
   is_available_for_rent: Yup.boolean(),
+  is_unavailable: Yup.boolean(),
   is_photo_available: Yup.boolean(),
   is_attachment_available: Yup.boolean(),
   is_video_available: Yup.boolean(),
   videos: Yup.array(),
 }).test('at-least-one-availability', function(value) {
-  if (!value?.is_available_for_sale && !value?.is_available_for_rent) {
-    return this.createError({ path: 'at-least-one-availability', message: 'At least one availability option must be selected' });
+  if (!value?.is_available_for_sale && !value?.is_available_for_rent && !value?.is_unavailable) {
+    return this.createError({ path: 'at-least-one-availability', message: 'Please select availability status' });
   }
   return true;
 });

@@ -5,6 +5,7 @@ import { MapPin, Bed, Bath, Square, Heart } from 'lucide-react';
 import FavoriteStore from '../../stores/FavoriteStore';
 import authStore from '../../stores/AuthStore';
 import { useNavigate } from 'react-router-dom';
+import { getImageUrl } from '../../utils/mediaUtils';
 
 const PropertyCard = observer(({ property }) => {
   const navigate = useNavigate();
@@ -32,7 +33,7 @@ const PropertyCard = observer(({ property }) => {
   }).format(price);
 
   const coverImage = photos && photos.length > 0 
-    ? `http://localhost:5000${photos[0]}` 
+    ? getImageUrl(photos[0]) 
     : 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';
 
   return (
