@@ -608,6 +608,7 @@ const getPublicProperties = async (req, res) => {
       include: [
         { model: Person, as: 'Owner', attributes: ['id', 'full_name', 'phone'] },
         { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone'] },
+        { model: User, as: 'Creator', attributes: ['user_id', 'full_name'] },
       ],
     });
 

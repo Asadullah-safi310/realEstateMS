@@ -3,8 +3,9 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 require('dotenv').config();
 const { initDB } = require('./config/db');
-require('./models');
+require('./models'); //loads and registers all database models and their relationships so routes can safely use them
 
+// Route imports
 const authRoutes = require('./routes/authRoutes');
 const publicPropertyRoutes = require('./routes/public/propertyRoutes');
 const publicUserRoutes = require('./routes/public/userRoutes');
@@ -23,8 +24,9 @@ app.use(cors({
   origin: 'http://localhost:3000', // Adjust if frontend port differs
   credentials: true,
 }));
+
 app.use(express.json());
-app.use(cookieParser());
+app.use(cookieParser()); // this allows my server to read cookies sent from the browser
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 initDB();
@@ -53,3 +55,5 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+

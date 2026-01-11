@@ -14,7 +14,7 @@ const MyProperties = observer(() => {
 
   const fetchProperties = async () => {
     try {
-      // Use the authenticated endpoint to get ONLY the user's properties
+      // Use the authenticated endpoint to get created properties only
       const response = await axiosInstance.get('/properties');
       setProperties(response.data);
     } catch (error) {

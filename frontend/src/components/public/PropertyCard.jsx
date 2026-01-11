@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { observer } from 'mobx-react-lite';
-import { MapPin, Bed, Bath, Square, Heart } from 'lucide-react';
+import { MapPin, Bed, Bath, Square, Heart, User } from 'lucide-react';
 import FavoriteStore from '../../stores/FavoriteStore';
 import authStore from '../../stores/AuthStore';
 import { useNavigate } from 'react-router-dom';
@@ -22,7 +22,8 @@ const PropertyCard = observer(({ property }) => {
     bathrooms,
     area_size,
     is_available_for_sale,
-    is_available_for_rent
+    is_available_for_rent,
+    Creator
   } = property;
 
   const price = purpose === 'SALE' ? sale_price : rent_price;
@@ -100,14 +101,26 @@ const PropertyCard = observer(({ property }) => {
       {/* Content */}
       <div className="p-5">
         <div className="flex items-start justify-between mb-2">
-          <div>
+          <div className="flex-1">
             <h3 className="text-lg font-bold text-gray-900 line-clamp-1 group-hover:text-blue-600 transition-colors">
               {property_type} in {city}
             </h3>
-            <div className="flex items-center text-gray-500 text-sm mt-1">
-              <MapPin size={14} className="mr-1" />
+            <div className="flex items-center text-gray-500 text-sm mt-1 mb-3">
+              <MapPin size={14} className="mr-1 flex-shrink-0" />
               <span className="line-clamp-1">{location}, {city}</span>
             </div>
+            
+            {Creator && (
+              <button
+                onClick={() => navigate(`/user/${Creator.user_id}`)}
+                className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors group/creator"
+              >
+                <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 group-hover/creator:bg-blue-200 transition-colors">
+                  <User size={14} className="text-blue-600" />
+                </div>
+                <span className="font-medium truncate hover:underline">{Creator.full_name}</span>
+              </button>
+            )}
           </div>
         </div>
 

@@ -233,6 +233,7 @@ const AddProperty = observer(() => {
 
     const submissionData = {
       ...values,
+      agent_id: values.agent_id === "" ? null : (values.agent_id ? parseInt(values.agent_id, 10) : null),
     };
 
     let success = false;
@@ -328,13 +329,13 @@ const AddProperty = observer(() => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Agent</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Agent <span className="text-gray-500 font-normal">(Optional)</span></label>
                     <Field
                       as="select"
                       name="agent_id"
                       className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     >
-                      <option value="">Select Agent</option>
+                      <option value="">No Agent</option>
                       {PersonStore.agents.map((agent) => (
                         <option key={agent.user_id} value={agent.user_id}>
                           {agent.full_name} ({agent.phone})
