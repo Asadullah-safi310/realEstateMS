@@ -24,6 +24,7 @@ import MyProperties from './pages/protected/MyProperties';
 import AddPropertyProtected from './pages/protected/AddProperty';
 import MyDeals from './pages/protected/MyDeals';
 import DealDetails from './pages/protected/DealDetails';
+import DealPrintReport from './pages/protected/DealPrintReport';
 import DealForm from './pages/protected/DealForm';
 import ProfileManagement from './pages/protected/ProfileManagement';
 
@@ -106,6 +107,13 @@ function App() {
           <Route path="persons/edit/:id" element={<RequireAgent><AddPerson /></RequireAgent>} />
           <Route path="persons/:id" element={<RequireAgent><PersonDetails /></RequireAgent>} />
         </Route>
+
+        {/* Print Report Route - Outside Layout */}
+        <Route path="/authenticated/deals/:id/report" element={
+          <RequireAuth>
+            <DealPrintReport />
+          </RequireAuth>
+        } />
 
         {/* Admin Routes */}
         <Route path="/admin/login" element={<AdminLogin />} />

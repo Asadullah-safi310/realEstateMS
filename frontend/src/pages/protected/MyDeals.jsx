@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { observer } from 'mobx-react-lite';
-import { Loader2, FileText, Calendar, DollarSign, User, ChevronRight } from 'lucide-react';
+import { Loader2, FileText, Calendar, DollarSign, User, ChevronRight, Eye, FileCheck } from 'lucide-react';
 import axiosInstance from '../../api/axiosInstance';
 
 const MyDeals = observer(() => {
@@ -45,11 +45,10 @@ const MyDeals = observer(() => {
             {deals.map((deal) => (
               <div 
                 key={deal.deal_id} 
-                onClick={() => navigate(`/authenticated/deals/${deal.deal_id}`)}
-                className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group"
+                className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md hover:border-blue-200 transition-all group"
               >
                 <div className="flex flex-col md:flex-row justify-between gap-6">
-                  <div className="flex-1">
+                  <div className="flex-1 cursor-pointer" onClick={() => navigate(`/authenticated/deals/${deal.deal_id}`)}>
                     <div className="flex items-center gap-3 mb-2">
                       <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
                         deal.deal_type === 'SALE' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
@@ -79,17 +78,42 @@ const MyDeals = observer(() => {
                     </div>
                   </div>
 
-                  <div className="flex flex-col items-end justify-between min-w-fit">
-                    <div className="text-2xl font-bold text-blue-600 flex items-center">
-                      <DollarSign size={20} />
-                      {new Intl.NumberFormat('en-US').format(deal.price)}
+                  <div className="flex flex-col items-end justify-between min-w-fit gap-4">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/authenticated/deals/${deal.deal_id}/report`);
+                        }}
+                        className="flex items-center gap-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
+                        title="View Printable Report"
+                      >
+                        <FileCheck size={16} />
+                        View Report
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/authenticated/deals/${deal.deal_id}`);
+                        }}
+                        className="flex items-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
+                        title="View Full Details"
+                      >
+                        <Eye size={16} />
+                        Details
+                      </button>
                     </div>
-                    {deal.deal_type === 'RENT' && (
-                      <div className="text-sm text-gray-500 mt-1">
-                        Start: {new Date(deal.start_date).toLocaleDateString()}
+                    <div className="w-full">
+                      <div className="text-2xl font-bold text-blue-600 flex items-center justify-end mb-2">
+                        <DollarSign size={20} />
+                        {new Intl.NumberFormat('en-US').format(deal.price)}
                       </div>
-                    )}
-                    <ChevronRight size={20} className="text-gray-400 mt-2 group-hover:text-blue-600 transition" />
+                      {deal.deal_type === 'RENT' && (
+                        <div className="text-sm text-gray-500 text-right">
+                          Start: {new Date(deal.start_date).toLocaleDateString()}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
