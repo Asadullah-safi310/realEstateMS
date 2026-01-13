@@ -11,10 +11,12 @@ const {
   getPropertiesByTenant, 
   updatePropertyAvailability,
   getMyProperties,
-  getPropertyById
+  getPropertyById,
+  getDashboardStats
 } = require('../../controllers/propertyController');
 const { upload } = require('../../utils/upload');
 
+router.get('/dashboard/stats', getDashboardStats);
 router.get('/', getMyProperties);
 router.get('/my-properties', getMyProperties);
 router.get('/:id', getPropertyById); // Add this route to fetch single property for editing

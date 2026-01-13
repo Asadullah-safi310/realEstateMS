@@ -20,9 +20,9 @@ exports.register = async (req, res) => {
     const userExists = await User.findOne({ 
       where: { 
         [Op.or]: [
-          { phone },
-          ...(email ? [{ email }] : []),
-          { username }
+          { phone }, //Checks if a user already has this phone number
+          ...(email ? [{ email }] : []),    //... is the spread operator means, "Take everything inside this array and insert it here.”
+          { username }  // Checks if a user already has this username in the whole user table
         ]
       } 
     });
@@ -38,7 +38,7 @@ exports.register = async (req, res) => {
         return res.status(400).json({ message: 'Username already taken' });
       }
     }
-
+    // create user or add new user into user table
     const user = await User.create({
       username,
       email,
@@ -72,6 +72,13 @@ exports.register = async (req, res) => {
     console.error(error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
+
+
+  /* 
+  Notes:
+  [Op.or]: means ANY ONE of the following conditions can match
+  If any condition is true → it means the user exists, and the database will return that user if any of 3 conditions match
+  */
 };
 
 exports.login = async (req, res) => {
@@ -135,3 +142,15 @@ exports.getMe = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
+
+
+/*
+what is sequelize for?
+We write JavaScript objects, Sequelize converts them into SQL queries, then MySQL2 sends those queries to the MySQL database so it can understand and execute them.
+You → JavaScript
+Sequelize → Translator (JS → SQL)
+MySQL2 → Messenger or driver (sends SQL queries to the database)
+MySQL → Listener & executor
+No matter if you use ORM like Sequelize or raw SQL, you always need a driver/messenger to deliver queries from your code to the database. 
+*/

@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { Link } from 'react-router-dom';
-import { User, Phone, Mail, Home, Globe, Briefcase } from 'lucide-react';
+import { User, Phone, Mail, Home, Globe, Briefcase, ListChecks, UserCheck, TrendingUp } from 'lucide-react';
 import authStore from '../../stores/AuthStore';
 import axiosInstance from '../../api/axiosInstance';
+import Avatar from '../../components/Avatar';
 
 const StatCard = ({ icon: Icon, label, value, color }) => (
   <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
@@ -22,29 +23,19 @@ const StatCard = ({ icon: Icon, label, value, color }) => (
 const MyDashboard = observer(() => {
   const { user } = authStore;
   const [stats, setStats] = useState({
-    total: 0,
-    public: 0,
+    total_managed: 0,
+    total_assigned: 0,
+    total_listed: 0,
+    public_listings: 0,
+    for_sale: 0,
+    for_rent: 0,
     active_deals: 0
   });
 
   const fetchDashboardData = async () => {
     try {
-      const response = await axiosInstance.get('/properties/my-properties');
-      const properties = response.data;
-      
-      const publicCount = properties.filter(p => (p.is_available_for_sale || p.is_available_for_rent) && p.status === 'available').length;
-      
-      let dealsCount = 0;
-      if (user?.role === 'agent') {
-        const dealsRes = await axiosInstance.get('/deals/my-deals');
-        dealsCount = dealsRes.data.filter(d => d.status === 'active').length;
-      }
-
-      setStats({
-        total: properties.length,
-        public: publicCount,
-        active_deals: dealsCount
-      });
+      const response = await axiosInstance.get('/properties/dashboard/stats');
+      setStats(response.data);
     } catch (error) {
       console.error('Failed to fetch dashboard data', error);
     }
@@ -59,9 +50,7 @@ const MyDashboard = observer(() => {
       {/* Header & Profile Section */}
       <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8 border border-gray-100">
         <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-          <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 shadow-inner">
-            <User size={40} />
-          </div>
+          <Avatar user={user} size="xl" className="shadow-inner" />
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-2xl font-bold text-gray-900">Welcome, {user?.full_name}</h1>
@@ -94,26 +83,61 @@ const MyDashboard = observer(() => {
       </div>
 
       {/* Analytics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard 
-          icon={Home} 
-          label="Total Managed" 
-          value={stats.total} 
-          color="blue" 
-        />
-        <StatCard 
-          icon={Globe} 
-          label="Public Listings" 
-          value={stats.public} 
-          color="green" 
-        />
-        {user?.role === 'agent' && (
+      <div className="space-y-6">
+        {/* Row 1: Managed Properties */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <StatCard 
-            icon={Briefcase} 
-            label="Active Deals" 
-            value={stats.active_deals} 
+            icon={Home} 
+            label="Total Managed" 
+            value={stats.total_managed} 
+            color="blue" 
+          />
+          <StatCard 
+            icon={UserCheck} 
+            label="Total Assigned" 
+            value={stats.total_assigned} 
             color="purple" 
           />
+          <StatCard 
+            icon={ListChecks} 
+            label="Total Listed/Created" 
+            value={stats.total_listed} 
+            color="indigo" 
+          />
+        </div>
+
+        {/* Row 2: Public Listings */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <StatCard 
+            icon={Globe} 
+            label="Public Listings" 
+            value={stats.public_listings} 
+            color="green" 
+          />
+          <StatCard 
+            icon={TrendingUp} 
+            label="For Sale" 
+            value={stats.for_sale} 
+            color="emerald" 
+          />
+          <StatCard 
+            icon={TrendingUp} 
+            label="For Rent" 
+            value={stats.for_rent} 
+            color="cyan" 
+          />
+        </div>
+
+        {/* Row 3: Active Deals (only for agents) */}
+        {user?.role === 'agent' && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <StatCard 
+              icon={Briefcase} 
+              label="Completed Deals" 
+              value={stats.active_deals} 
+              color="orange" 
+            />
+          </div>
         )}
       </div>
     </div>

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Plus, Loader2, Edit, Trash2, Eye, Filter, Home } from 'lucide-react';
 import axiosInstance from '../../api/axiosInstance';
 import PropertyStore from '../../stores/PropertyStore';
+import authStore from '../../stores/AuthStore';
 import PropertyCard from '../../components/public/PropertyCard';
 import { showSuccess, showError } from '../../utils/toast';
 
@@ -120,36 +121,44 @@ const MyProperties = observer(() => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProperties.map(property => (
-            <div key={property.property_id} className="relative group">
-              <PropertyCard property={property} />
-              
-              {/* Action Overlay */}
-              <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                <Link 
-                  to={`/properties/${property.property_id}`}
-                  className="p-2 bg-white text-gray-600 rounded-full shadow-sm hover:text-blue-600 transition-colors"
-                  title="View Public Page"
-                >
-                  <Eye size={18} />
-                </Link>
-                <Link 
-                  to={`/authenticated/properties/edit/${property.property_id}`}
-                  className="p-2 bg-white text-gray-600 rounded-full shadow-sm hover:text-blue-600 transition-colors"
-                  title="Edit"
-                >
-                  <Edit size={18} />
-                </Link>
-                <button 
-                  onClick={() => handleDelete(property.property_id)}
-                  className="p-2 bg-white text-gray-600 rounded-full shadow-sm hover:text-red-600 transition-colors"
-                  title="Delete"
-                >
-                  <Trash2 size={18} />
-                </button>
+          {filteredProperties.map(property => {
+            const isCreator = property.created_by_user_id === authStore.user?.user_id;
+            
+            return (
+              <div key={property.property_id} className="relative group">
+                <PropertyCard property={property} isCreator={isCreator} />
+                
+                {/* Action Overlay */}
+                <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                  <Link 
+                    to={`/properties/${property.property_id}`}
+                    className="p-2 bg-white text-gray-600 rounded-full shadow-sm hover:text-blue-600 transition-colors"
+                    title="View Public Page"
+                  >
+                    <Eye size={18} />
+                  </Link>
+                  {isCreator && (
+                    <>
+                      <Link 
+                        to={`/authenticated/properties/edit/${property.property_id}`}
+                        className="p-2 bg-white text-gray-600 rounded-full shadow-sm hover:text-blue-600 transition-colors"
+                        title="Edit"
+                      >
+                        <Edit size={18} />
+                      </Link>
+                      <button 
+                        onClick={() => handleDelete(property.property_id)}
+                        className="p-2 bg-white text-gray-600 rounded-full shadow-sm hover:text-red-600 transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

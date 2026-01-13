@@ -21,11 +21,11 @@ const app = express();
 const path = require('path');
 
 app.use(cors({
-  origin: 'http://localhost:3000', // Adjust if frontend port differs
-  credentials: true,
+  origin: 'http://localhost:3000', // Adjust or change if frontend port differs
+  credentials: true, // Allow cookies to be sent
 }));
 
-app.use(express.json());
+app.use(express.json()); // for parsing application/json
 app.use(cookieParser()); // this allows my server to read cookies sent from the browser
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 

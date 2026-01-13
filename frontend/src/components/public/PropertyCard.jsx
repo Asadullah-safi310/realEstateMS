@@ -7,7 +7,7 @@ import authStore from '../../stores/AuthStore';
 import { useNavigate } from 'react-router-dom';
 import { getImageUrl } from '../../utils/mediaUtils';
 
-const PropertyCard = observer(({ property }) => {
+const PropertyCard = observer(({ property, isCreator }) => {
   const navigate = useNavigate();
   const {
     property_id,
@@ -100,11 +100,16 @@ const PropertyCard = observer(({ property }) => {
 
       {/* Content */}
       <div className="p-5">
-        <div className="flex items-start justify-between mb-2">
+        <div className="flex items-center justify-between mb-2 gap-2">
           <div className="flex-1">
             <h3 className="text-lg font-bold text-gray-900 line-clamp-1 group-hover:text-blue-600 transition-colors">
               {property_type} in {city}
             </h3>
+            {isCreator === false && (
+              <span className="inline-block text-xs font-semibold text-yellow-700 bg-yellow-100 px-2 py-1 rounded-full mt-1">
+                Assigned
+              </span>
+            )}
             <div className="flex items-center text-gray-500 text-sm mt-1 mb-3">
               <MapPin size={14} className="mr-1 flex-shrink-0" />
               <span className="line-clamp-1">{location}, {city}</span>

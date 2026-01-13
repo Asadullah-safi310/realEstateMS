@@ -14,6 +14,7 @@ import {
   Settings
 } from 'lucide-react';
 import authStore from '../stores/AuthStore';
+import Avatar from '../components/Avatar';
 
 const AdminLayout = observer(() => {
   const { user, isAuthenticated, isAdmin, logout, isLoading } = authStore;
@@ -109,9 +110,7 @@ const AdminLayout = observer(() => {
           {/* User Profile & Logout */}
           <div className="p-4 border-t border-gray-100">
             <div className="flex items-center gap-3 px-4 py-3 mb-2">
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm">
-                {user?.full_name?.charAt(0)}
-              </div>
+              <Avatar user={user} size="sm" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">{user?.full_name}</p>
                 <p className="text-xs text-gray-500 truncate">{user?.email}</p>

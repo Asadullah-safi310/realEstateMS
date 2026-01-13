@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
-import { User, Phone, Mail, MapPin, Loader2 } from 'lucide-react';
+import { User, Phone, Mail, MapPin, Loader2, Upload, X } from 'lucide-react';
 import AuthenticatedLayout from '../../layouts/AuthenticatedLayout';
 import authStore from '../../stores/AuthStore';
 import { showSuccess, showError } from '../../utils/toast';
+import { getImageUrl } from '../../utils/mediaUtils';
+import Avatar from '../../components/Avatar';
 
 const profileSchema = Yup.object({
   full_name: Yup.string().required('Full name is required'),
@@ -17,11 +19,31 @@ const profileSchema = Yup.object({
 
 const ProfileManagement = observer(() => {
   const { user, isLoading } = authStore;
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+  };
 
   const handleSubmit = async (values) => {
-    const success = await authStore.updateProfile(values);
+    const success = await authStore.updateProfile(values, selectedFile);
     if (success) {
       showSuccess('Profile updated successfully');
+      handleRemoveFile();
     } else {
       showError(authStore.error || 'Failed to update profile');
     }
@@ -35,8 +57,18 @@ const ProfileManagement = observer(() => {
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="p-6 bg-blue-50 border-b border-blue-100 flex items-center gap-4">
-            <div className="w-16 h-16 bg-blue-200 rounded-full flex items-center justify-center text-blue-600 text-2xl font-bold">
-              {user.full_name?.charAt(0)}
+            <div className="relative">
+              {previewUrl ? (
+                <Avatar user={{ ...user, profile_picture: null }} size="lg" className="!bg-transparent">
+                  <img 
+                    src={previewUrl} 
+                    alt="Preview" 
+                    className="w-full h-full rounded-full object-cover border-2 border-blue-200"
+                  />
+                </Avatar>
+              ) : (
+                <Avatar user={user} size="lg" className="border-2 border-blue-200" />
+              )}
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">{user.full_name}</h2>
@@ -122,6 +154,50 @@ const ProfileManagement = observer(() => {
                       className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     />
                     <ErrorMessage name="national_id" component="div" className="text-red-500 text-sm mt-1" />
+                  </div>
+
+                  <div className="border-t border-gray-100 pt-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-3">Profile Picture <span className="text-gray-400">(Optional)</span></label>
+                    <div className="flex items-center gap-4">
+                      <div className="flex-shrink-0">
+                        {previewUrl ? (
+                          <img 
+                            src={previewUrl} 
+                            alt="Profile preview" 
+                            className="w-20 h-20 rounded-lg object-cover border-2 border-blue-200"
+                          />
+                        ) : (
+                          <Avatar user={user} size="lg" className="w-20 h-20 border-2 border-gray-200" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <label className="flex flex-col items-center justify-center px-4 py-6 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors">
+                          <div className="flex flex-col items-center justify-center text-center">
+                            <Upload size={24} className="text-gray-400 mb-2" />
+                            <span className="text-sm font-medium text-gray-700">Click to upload</span>
+                            <span className="text-xs text-gray-500">PNG, JPG up to 5MB</span>
+                          </div>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            onChange={handleFileSelect} 
+                            className="hidden"
+                          />
+                        </label>
+                        {selectedFile && (
+                          <div className="mt-3 flex items-center justify-between bg-blue-50 p-3 rounded-lg">
+                            <span className="text-sm text-gray-700">{selectedFile.name}</span>
+                            <button 
+                              type="button"
+                              onClick={handleRemoveFile}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <X size={18} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="pt-4 border-t border-gray-100 flex justify-end">

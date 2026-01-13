@@ -4,6 +4,7 @@ import { observer } from 'mobx-react-lite';
 import { User, Phone, Mail, MapPin, Loader2, Calendar, ArrowLeft } from 'lucide-react';
 import axiosInstance from '../api/axiosInstance';
 import PropertyCard from '../components/public/PropertyCard';
+import Avatar from '../components/Avatar';
 
 const PublicUserProfile = observer(() => {
   const { id } = useParams();
@@ -71,12 +72,8 @@ const PublicUserProfile = observer(() => {
           
           <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
             {/* Avatar */}
-            <div className="w-32 h-32 md:w-40 md:h-40 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-4xl border-4 border-white shadow-lg overflow-hidden shrink-0">
-              {user.profile_picture ? (
-                <img src={user.profile_picture} alt={user.full_name} className="w-full h-full object-cover" />
-              ) : (
-                user.full_name?.charAt(0) || <User size={64} />
-              )}
+            <div className="border-4 border-white shadow-lg shrink-0">
+              <Avatar user={user} size="2xl" />
             </div>
 
             {/* User Info */}

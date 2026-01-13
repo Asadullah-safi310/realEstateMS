@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mail, Phone, MapPin, Home, Users, Key, Calendar, FileText, ExternalLink, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, MapPin, Home, Users, Key, Calendar, FileText, ExternalLink, ShieldCheck, Upload } from 'lucide-react';
 import axiosInstance from '../api/axiosInstance';
 import { getImageUrl, getFileUrl } from '../utils/mediaUtils';
+import Avatar from '../components/Avatar';
 
 const PersonDetails = () => {
   const { id } = useParams();
@@ -89,10 +90,8 @@ const PersonDetails = () => {
             <div className="h-24 bg-gradient-to-r from-blue-600 to-blue-700"></div>
             <div className="px-8 pb-8">
               <div className="relative -mt-12 mb-6">
-                <div className="w-24 h-24 bg-white rounded-2xl shadow-lg p-1.5">
-                  <div className="w-full h-full bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 text-3xl font-bold">
-                    {person.full_name?.charAt(0).toUpperCase()}
-                  </div>
+                <div className="w-24 h-24 bg-white rounded-2xl shadow-lg p-1.5 border-4 border-white">
+                  <Avatar user={person} size="lg" />
                 </div>
                 {person.id_card_path && (
                   <div className="absolute -bottom-1 -right-1 bg-green-500 border-4 border-white text-white p-1 rounded-full" title="ID Verified">

@@ -11,6 +11,8 @@ const SearchProperties = observer(() => {
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showMap, setShowMap] = useState(false);
+  const [agents, setAgents] = useState([]);
+  const [listers, setListers] = useState([]);
   const [filters, setFilters] = useState({
     city: searchParams.get('city') || '',
     property_type: searchParams.get('property_type') || '',
@@ -18,9 +20,27 @@ const SearchProperties = observer(() => {
     min_price: '',
     max_price: '',
     bedrooms: '',
+    agent_id: searchParams.get('agent_id') || '',
+    created_by_user_id: searchParams.get('created_by_user_id') || '',
     status: 'available',
     availability: '',
   });
+
+  useEffect(() => {
+    const fetchAgentsAndListers = async () => {
+      try {
+        const [agentsRes, listersRes] = await Promise.all([
+          axiosInstance.get('/public/users/agents/list'),
+          axiosInstance.get('/public/users/listers/list')
+        ]);
+        setAgents(agentsRes.data);
+        setListers(listersRes.data);
+      } catch (error) {
+        console.error('Failed to fetch agents/listers', error);
+      }
+    };
+    fetchAgentsAndListers();
+  }, []);
 
   useEffect(() => {
     // Update filters from URL params on mount/change
@@ -29,6 +49,8 @@ const SearchProperties = observer(() => {
       city: searchParams.get('city') || '',
       property_type: searchParams.get('property_type') || '',
       purpose: searchParams.get('purpose') || '',
+      agent_id: searchParams.get('agent_id') || '',
+      created_by_user_id: searchParams.get('created_by_user_id') || '',
     }));
   }, [searchParams]);
 
@@ -175,6 +197,40 @@ const SearchProperties = observer(() => {
                     onChange={handleFilterChange} 
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Agent</label>
+                  <select 
+                    name="agent_id" 
+                    value={filters.agent_id} 
+                    onChange={handleFilterChange} 
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  >
+                    <option value="">All Agents</option>
+                    {agents.map(agent => (
+                      <option key={agent.user_id} value={agent.user_id}>
+                        {agent.full_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Listed By</label>
+                  <select 
+                    name="created_by_user_id" 
+                    value={filters.created_by_user_id} 
+                    onChange={handleFilterChange} 
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  >
+                    <option value="">All Users</option>
+                    {listers.map(user => (
+                      <option key={user.user_id} value={user.user_id}>
+                        {user.full_name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <button 

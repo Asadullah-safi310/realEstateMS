@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { observer } from 'mobx-react-lite';
 import { Menu, X, User, LogOut, LayoutDashboard, Home, PlusCircle } from 'lucide-react';
 import authStore from '../stores/AuthStore';
+import Avatar from './Avatar';
 
 const Navbar = observer(({ onOpenLogin, onOpenRegister }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -59,9 +60,7 @@ const Navbar = observer(({ onOpenLogin, onOpenRegister }) => {
                 
                 <div className="relative ml-3 group">
                   <button className="flex items-center gap-2 text-gray-700 hover:text-blue-600 focus:outline-none">
-                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-                      {user?.full_name?.charAt(0) || <User size={18} />}
-                    </div>
+                    <Avatar user={user} size="sm" />
                     <span className="text-sm font-medium">{user?.username}</span>
                   </button>
                   

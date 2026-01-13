@@ -170,7 +170,7 @@ const getPropertyById = async (req, res) => {
 
 const searchProperties = async (req, res) => {
   try {
-    const { city, property_type, purpose, min_sale_price, max_sale_price, min_rent_price, max_rent_price, bedrooms, status, availability, limit } = req.query;
+    const { city, property_type, purpose, min_sale_price, max_sale_price, min_rent_price, max_rent_price, bedrooms, status, availability, agent_id, created_by_user_id, limit } = req.query;
     const where = {};
 
     const publicCriteria = { 
@@ -204,6 +204,8 @@ const searchProperties = async (req, res) => {
     if (purpose) where.purpose = purpose;
     if (bedrooms) where.bedrooms = bedrooms;
     if (status) where.status = status;
+    if (agent_id) where.agent_id = agent_id;
+    if (created_by_user_id) where.created_by_user_id = created_by_user_id;
     
     if (min_sale_price || max_sale_price) {
       where.sale_price = {};
@@ -631,6 +633,98 @@ const getPublicProperties = async (req, res) => {
   }
 };
 
+const getDashboardStats = async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+
+    const totalManaged = await Property.count({
+      where: {
+        [Op.or]: [
+          { created_by_user_id: userId },
+          { agent_id: userId }
+        ]
+      }
+    });
+
+    const totalAssigned = await Property.count({
+      where: { agent_id: userId }
+    });
+
+    const totalListed = await Property.count({
+      where: { created_by_user_id: userId }
+    });
+
+    const publicListings = await Property.count({
+      where: {
+        [Op.and]: [
+          {
+            [Op.or]: [
+              { created_by_user_id: userId },
+              { agent_id: userId }
+            ]
+          },
+          {
+            [Op.or]: [
+              { is_available_for_sale: true },
+              { is_available_for_rent: true }
+            ]
+          }
+        ]
+      }
+    });
+
+    const forSale = await Property.count({
+      where: {
+        [Op.and]: [
+          {
+            [Op.or]: [
+              { created_by_user_id: userId },
+              { agent_id: userId }
+            ]
+          },
+          { is_available_for_sale: true }
+        ]
+      }
+    });
+
+    const forRent = await Property.count({
+      where: {
+        [Op.and]: [
+          {
+            [Op.or]: [
+              { created_by_user_id: userId },
+              { agent_id: userId }
+            ]
+          },
+          { is_available_for_rent: true }
+        ]
+      }
+    });
+
+    let activeDeals = 0;
+    if (req.user.role === 'agent') {
+      activeDeals = await Deal.count({
+        where: {
+          agent_user_id: userId,
+          status: 'completed'
+        }
+      });
+    }
+
+    res.json({
+      total_managed: totalManaged,
+      total_assigned: totalAssigned,
+      total_listed: totalListed,
+      public_listings: publicListings,
+      for_sale: forSale,
+      for_rent: forRent,
+      active_deals: activeDeals
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const getPublicPropertiesByUser = async (req, res) => {
   try {
     const { id } = req.params;
@@ -697,6 +791,7 @@ module.exports = {
   searchProperties,
   getPublicProperties,
   getPublicPropertiesByUser,
+  getDashboardStats,
   updateProperty,
   updatePropertyStatus,
   deleteProperty,

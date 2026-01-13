@@ -86,11 +86,25 @@ class AuthStore {
     }
   };
 
-  updateProfile = async (userData) => {
+  updateProfile = async (userData, file = null) => {
     this.isLoading = true;
     this.error = null;
     try {
-      const response = await axiosInstance.put('/profile', userData);
+      let requestData = userData;
+      
+      if (file) {
+        requestData = new FormData();
+        Object.keys(userData).forEach(key => {
+          const value = userData[key];
+          if (value !== null && value !== undefined) {
+            requestData.append(key, value);
+          }
+        });
+        requestData.append('profile_picture', file);
+      }
+
+      const response = await axiosInstance.put('/profile', requestData);
+      
       runInAction(() => {
         this.user = response.data;
         this.isLoading = false;

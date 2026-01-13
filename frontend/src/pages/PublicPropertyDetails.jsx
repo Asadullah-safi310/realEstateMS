@@ -7,6 +7,7 @@ import ImageCarousel from '../components/ImageCarousel';
 import { VideoThumbnail, VideoPlayer } from '../components/VideoPlayer';
 import { getFileUrl } from '../utils/mediaUtils';
 import authStore from '../stores/AuthStore';
+import Avatar from '../components/Avatar';
 
 const PublicPropertyDetails = observer(() => {
   const { id } = useParams();
@@ -138,13 +139,9 @@ const PublicPropertyDetails = observer(() => {
         <div className="flex items-center gap-4 mb-6">
           <Link 
             to={`/user/${user.user_id}`}
-            className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-xl overflow-hidden hover:opacity-80 transition-opacity"
+            className="hover:opacity-80 transition-opacity"
           >
-            {user.profile_picture ? (
-              <img src={user.profile_picture} alt={user.full_name} className="w-full h-full object-cover" />
-            ) : (
-              user.full_name?.charAt(0) || <User size={32} />
-            )}
+            <Avatar user={user} size="lg" />
           </Link>
           <div>
             <Link 

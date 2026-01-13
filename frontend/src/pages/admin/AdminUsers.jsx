@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Search, Trash2, Shield, User } from 'lucide-react';
 import axiosInstance from '../../api/axiosInstance';
 import { showSuccess, showError } from '../../utils/toast';
+import Avatar from '../../components/Avatar';
 
 const AdminUsers = () => {
   const [users, setUsers] = useState([]);
@@ -95,8 +96,8 @@ const AdminUsers = () => {
                 <tr key={user.user_id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">
-                        {user.full_name?.charAt(0) || 'U'}
+                      <div className="flex-shrink-0">
+                        <Avatar user={user} size="sm" />
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">{user.full_name || 'Unknown'}</div>

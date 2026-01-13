@@ -184,6 +184,7 @@ const updateProfile = async (req, res) => {
 
   try {
     const { full_name, phone, email, national_id, address } = req.body;
+    const profilePictureUrl = req.file ? `/uploads/${req.file.filename}` : null;
     
     let person = await Person.findOne({ where: { user_id: req.user.user_id } });
     
@@ -206,7 +207,25 @@ const updateProfile = async (req, res) => {
       });
     }
 
-    res.json(person);
+    let user = req.user;
+    if (profilePictureUrl || full_name || phone) {
+      user = await User.findByPk(req.user.user_id);
+      const updateData = {};
+      if (profilePictureUrl) updateData.profile_picture = profilePictureUrl;
+      if (full_name) updateData.full_name = full_name;
+      if (phone) updateData.phone = phone;
+      if (email) updateData.email = email;
+      
+      await user.update(updateData);
+    }
+
+    res.json({
+      ...person.toJSON(),
+      profile_picture: user.profile_picture,
+      full_name: user.full_name,
+      phone: user.phone,
+      email: user.email
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -220,7 +239,7 @@ const getProfile = async (req, res) => {
         {
           model: User,
           as: 'User',
-          attributes: ['user_id', 'username', 'role'],
+          attributes: ['user_id', 'username', 'role', 'profile_picture'],
         }
       ],
     });
@@ -232,6 +251,7 @@ const getProfile = async (req, res) => {
         email: req.user.email,
         national_id: req.user.national_id,
         address: req.user.address,
+        profile_picture: req.user.profile_picture,
         User: {
           user_id: req.user.user_id,
           username: req.user.username,
