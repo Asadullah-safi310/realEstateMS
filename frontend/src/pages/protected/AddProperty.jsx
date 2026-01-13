@@ -11,6 +11,8 @@ import { Loader2, Upload, X, Trash2, Globe, Lock } from "lucide-react";
 import axiosInstance from "../../api/axiosInstance";
 import LocationPicker from "../../components/LocationPicker";
 import PersonSelect from "../../components/PersonSelect";
+import { getImageUrl, getFileUrl, validateFileSize, validateFileType, getFileTypeCategory, getFileExtension, getFileSizeDisplay } from "../../utils/mediaUtils";
+import ConfirmDialog from "../../components/ConfirmDialog";
 
 const AddProperty = observer(() => {
   const navigate = useNavigate();
@@ -20,6 +22,8 @@ const AddProperty = observer(() => {
   const [uploadedAttachments, setUploadedAttachments] = useState([]);
   const [uploadedVideos, setUploadedVideos] = useState([]);
   const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [deletingFile, setDeletingFile] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, fileUrl: null, type: null });
   
   // Location Data
   const [provinces, setProvinces] = useState([]);
@@ -143,17 +147,9 @@ const AddProperty = observer(() => {
     const errors = [];
 
     files.forEach((file) => {
-      const allowedMimes = [
-        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-        'video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo',
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      ];
-
-      if (!allowedMimes.includes(file.type)) {
+      if (!validateFileType(file)) {
         errors.push(`${file.name}: Invalid file type`);
-      } else if (file.size > 10 * 1024 * 1024) {
+      } else if (!validateFileSize(file)) {
         errors.push(`${file.name}: File size exceeds 10MB limit`);
       } else {
         validFiles.push(file);
@@ -166,6 +162,9 @@ const AddProperty = observer(() => {
 
     if (validFiles.length > 0) {
       setSelectedFiles([...selectedFiles, ...validFiles]);
+      if (errors.length === 0) {
+        showSuccess(`${validFiles.length} file(s) selected`);
+      }
     }
 
     e.target.value = '';
@@ -201,22 +200,30 @@ const AddProperty = observer(() => {
     setSelectedFiles(selectedFiles.filter((_, i) => i !== index));
   };
 
-  const handleDeleteUploadedFile = async (fileUrl, type) => {
-    if (window.confirm(`Are you sure you want to delete this ${type}?`)) {
-      try {
-        await PropertyStore.deleteFile(id, fileUrl, type);
-        if (type === 'photo') {
-          setUploadedPhotos(uploadedPhotos.filter(p => p !== fileUrl));
-        } else if (type === 'video') {
-          setUploadedVideos(uploadedVideos.filter(v => v !== fileUrl));
-        } else if (type === 'attachment') {
-          setUploadedAttachments(uploadedAttachments.filter(a => a !== fileUrl));
-        }
-        showSuccess(`${type} deleted successfully`);
-      } catch (err) {
-        console.error('Error deleting file:', err);
-        showError('Failed to delete file');
+  const handleDeleteUploadedFile = (fileUrl, type) => {
+    setConfirmDialog({ isOpen: true, fileUrl, type });
+  };
+
+  const confirmDeleteUploadedFile = async () => {
+    const { fileUrl, type } = confirmDialog;
+    setConfirmDialog({ isOpen: false, fileUrl: null, type: null });
+
+    setDeletingFile(fileUrl);
+    try {
+      await PropertyStore.deleteFile(id, fileUrl, type);
+      if (type === 'photo') {
+        setUploadedPhotos(uploadedPhotos.filter(p => p !== fileUrl));
+      } else if (type === 'video') {
+        setUploadedVideos(uploadedVideos.filter(v => v !== fileUrl));
+      } else if (type === 'attachment') {
+        setUploadedAttachments(uploadedAttachments.filter(a => a !== fileUrl));
       }
+      showSuccess(`${type} deleted successfully`);
+    } catch (err) {
+      console.error('Error deleting file:', err);
+      showError('Failed to delete file');
+    } finally {
+      setDeletingFile(null);
     }
   };
 
@@ -590,87 +597,223 @@ const AddProperty = observer(() => {
                   <ErrorMessage name="at-least-one-availability" component="div" className="text-red-500 text-sm mt-2" />
                 </div>
 
-                {/* File Upload Section - Visible in both Add and Edit Mode */}
+                {/* File Upload Section - Enhanced with better UI */}
                 <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                  <h3 className="font-medium text-gray-900 mb-4">Photos & Attachments</h3>
-                  
-                  <div className="mb-4">
-                    <div className="flex items-center gap-4 mb-4">
-                      <label className="cursor-pointer bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2">
-                        <Upload size={20} />
-                        Select Files
-                        <input type="file" multiple onChange={handleFileSelect} className="hidden" />
-                      </label>
-                      {id && (
-                        <button
-                          type="button"
-                          onClick={handleUploadFiles}
-                          disabled={uploadingFiles || selectedFiles.length === 0}
-                          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                        >
-                          {uploadingFiles ? <Loader2 size={20} className="animate-spin" /> : 'Upload Selected'}
-                        </button>
-                      )}
-                      {!id && selectedFiles.length > 0 && (
-                        <span className="text-sm text-gray-600">Files will be uploaded after property is created</span>
-                      )}
-                    </div>
+                  <h3 className="font-medium text-gray-900 mb-4">📁 Media Upload (Optional)</h3>
+                  <div className="border-2 border-dashed border-gray-300 rounded p-4 mb-3 bg-white">
+                    <input
+                      type="file"
+                      multiple
+                      onChange={handleFileSelect}
+                      accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.mov,.avi,.mkv,.flv,.wmv,.mts,.m4v"
+                      className="w-full"
+                    />
+                    <p className="text-gray-600 text-xs mt-3 font-medium">
+                      📸 Supported: Images (JPG, PNG, GIF, WebP) • 🎥 Videos (MP4, WebM, AVI, QuickTime) • 📄 Documents (PDF, Word, Excel)
+                    </p>
+                    <p className="text-gray-500 text-xs mt-1">
+                      Max file size: 10MB per file. Check media availability options above to categorize uploads.
+                    </p>
+                  </div>
 
-                      {selectedFiles.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mb-4">
-                          {selectedFiles.map((file, index) => (
-                            <div key={index} className="bg-white px-3 py-1 rounded-full border border-gray-200 text-sm flex items-center gap-2">
-                              <span className="truncate max-w-[150px]">{file.name}</span>
-                              <button type="button" onClick={() => removeFile(index)} className="text-gray-400 hover:text-red-500">
-                                <X size={14} />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                  {selectedFiles.length > 0 && (
+                    <div className="mb-3">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                        Selected Files ({selectedFiles.length})
+                      </h4>
+                      <div className="space-y-2">
+                        {selectedFiles.map((file, index) => {
+                          const fileType = getFileTypeCategory(file);
+                          const isImage = fileType === 'image';
+                          const preview = isImage ? URL.createObjectURL(file) : null;
 
-                    {/* Display Uploaded Photos */}
-                    {uploadedPhotos.length > 0 && (
-                      <div className="mb-6">
-                        <h4 className="text-sm font-medium text-gray-700 mb-2">Photos</h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                          {uploadedPhotos.map((photo, index) => (
-                            <div key={index} className="relative group aspect-square rounded-lg overflow-hidden bg-gray-100">
-                              <img src={photo} alt={`Property ${index}`} className="w-full h-full object-cover" />
+                          return (
+                            <div
+                              key={index}
+                              className="flex gap-3 bg-white p-3 rounded border border-gray-200 hover:border-blue-300 transition"
+                            >
+                              {isImage && preview ? (
+                                <img
+                                  src={preview}
+                                  alt={file.name}
+                                  className="w-16 h-16 object-cover rounded flex-shrink-0"
+                                />
+                              ) : (
+                                <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center flex-shrink-0">
+                                  <span className="text-xs font-bold text-gray-600">
+                                    {getFileExtension(file.name)}
+                                  </span>
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">
+                                  {file.name}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {getFileSizeDisplay(file.size)} • {fileType}
+                                </p>
+                              </div>
                               <button
                                 type="button"
-                                onClick={() => handleDeleteUploadedFile(photo, 'photo')}
-                                className="absolute top-2 right-2 p-1.5 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700"
+                                onClick={() => removeFile(index)}
+                                className="text-red-600 hover:text-red-800 px-2 flex-shrink-0"
+                                title="Remove file"
                               >
-                                <Trash2 size={14} />
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
                               </button>
                             </div>
-                          ))}
-                        </div>
+                          );
+                        })}
                       </div>
-                    )}
+                      <button
+                        type="button"
+                        onClick={handleUploadFiles}
+                        disabled={uploadingFiles}
+                        className="mt-3 w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-4 py-2 rounded text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
+                      >
+                        {uploadingFiles ? (
+                          <>
+                            <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            Upload Files
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
 
-                    {/* Display Uploaded Attachments */}
-                    {uploadedAttachments.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-700 mb-2">Attachments</h4>
+                  {uploadedPhotos.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                        📸 Uploaded Photos ({uploadedPhotos.length})
+                      </h4>
+                      <div className="grid grid-cols-3 gap-2 mb-4">
+                        {uploadedPhotos.map((photo, index) => (
+                          <div
+                            key={index}
+                            className="relative bg-gray-100 rounded h-32 overflow-hidden group cursor-pointer"
+                          >
+                            <img
+                              src={getImageUrl(photo)}
+                              alt={`Property photo ${index + 1}`}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteUploadedFile(photo, 'photo')}
+                              disabled={deletingFile === photo}
+                              className="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                              title="Delete photo"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {uploadedAttachments.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                        📎 Uploaded Attachments ({uploadedAttachments.length})
+                      </h4>
+                      {uploadedAttachments.length > 0 ? (
                         <div className="space-y-2">
-                          {uploadedAttachments.map((file, index) => (
-                            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                              <span className="text-sm text-gray-600 truncate">{file.split('/').pop()}</span>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteUploadedFile(file, 'attachment')}
-                                className="text-red-500 hover:text-red-700 p-1"
+                          {uploadedAttachments.map((attachment, index) => {
+                            const fileName = attachment.split('/').pop();
+                            const fileType = fileName.split('.').pop().toUpperCase();
+                            return (
+                              <div
+                                key={index}
+                                className="flex items-center justify-between bg-white p-3 rounded-lg hover:bg-gray-50 transition group border border-gray-200"
                               >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          ))}
+                                <div className="flex items-center gap-3 flex-1">
+                                  <span className="inline-block px-2 py-1 rounded text-xs font-bold bg-blue-100 text-blue-800">
+                                    {fileType}
+                                  </span>
+                                  <span className="text-sm text-gray-700">{fileName}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <a
+                                    href={getFileUrl(attachment)}
+                                    download
+                                    className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                                  >
+                                    Download
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteUploadedFile(attachment, 'attachment')}
+                                    disabled={deletingFile === attachment}
+                                    className="text-red-600 hover:text-red-800 font-medium text-sm opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                                    title="Delete attachment"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      </div>
-                    )}
+                      ) : (
+                        <p className="text-gray-500 text-sm italic">No attachments uploaded yet</p>
+                      )}
+                    </div>
+                  )}
+
+                  {uploadedVideos.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                        🎥 Uploaded Videos ({uploadedVideos.length})
+                      </h4>
+                      {uploadedVideos.length > 0 ? (
+                        <div className="space-y-2">
+                          {uploadedVideos.map((video, index) => {
+                            const fileName = video.split('/').pop();
+                            const isYouTube = video.includes('youtube.com') || video.includes('youtu.be');
+                            return (
+                              <div
+                                key={index}
+                                className="flex items-center justify-between bg-white p-3 rounded-lg hover:bg-gray-50 transition group border border-gray-200"
+                              >
+                                <div className="flex items-center gap-3 flex-1">
+                                  <span className={`inline-block px-2 py-1 rounded text-xs font-bold ${isYouTube ? 'bg-red-100 text-red-800' : 'bg-purple-100 text-purple-800'}`}>
+                                    {isYouTube ? 'YOUTUBE' : 'VIDEO'}
+                                  </span>
+                                  <span className="text-sm text-gray-700">{fileName}</span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteUploadedFile(video, 'video')}
+                                  disabled={deletingFile === video}
+                                  className="text-red-600 hover:text-red-800 font-medium text-sm opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                                  title="Delete video"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500 text-sm italic">No videos uploaded yet</p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-end gap-4 pt-4">
@@ -695,6 +838,17 @@ const AddProperty = observer(() => {
           }}
           </Formik>
         </div>
+
+        <ConfirmDialog
+          isOpen={confirmDialog.isOpen}
+          title="Delete File"
+          message={`Are you sure you want to delete this ${confirmDialog.type}? This action cannot be undone.`}
+          onConfirm={confirmDeleteUploadedFile}
+          onCancel={() => setConfirmDialog({ isOpen: false, fileUrl: null, type: null })}
+          confirmText="Delete"
+          cancelText="Cancel"
+          isDangerous={true}
+        />
     </div>
   );
 });

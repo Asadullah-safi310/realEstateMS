@@ -672,7 +672,7 @@ const AddProperty = observer(() => {
                       type="file"
                       multiple
                       onChange={handleFileSelect}
-                      accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.mov,.avi,.mkv,.flv,.wmv,.mts,.m4v"
+                      accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.mov,.avi,.mkv,.flv,.wmv,.mts,.m4v"
                       className="w-full"
                     />
                     <p className="text-gray-600 text-xs mt-3 font-medium">

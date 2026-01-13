@@ -120,8 +120,16 @@ const PropertyCard = observer(({ property, isCreator }) => {
                 onClick={() => navigate(`/user/${Creator.user_id}`)}
                 className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors group/creator"
               >
-                <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 group-hover/creator:bg-blue-200 transition-colors">
-                  <User size={14} className="text-blue-600" />
+                <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 group-hover/creator:bg-blue-200 transition-colors overflow-hidden">
+                  {Creator.profile_picture ? (
+                    <img 
+                      src={getImageUrl(Creator.profile_picture)} 
+                      alt={Creator.full_name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <User size={14} className="text-blue-600" />
+                  )}
                 </div>
                 <span className="font-medium truncate hover:underline">{Creator.full_name}</span>
               </button>

@@ -104,8 +104,8 @@ const getProperties = async (req, res) => {
       where,
       include: [
         { model: Person, as: 'Owner', attributes: ['id', 'full_name', 'phone'] },
-        { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone'] },
-        { model: User, as: 'Creator', attributes: ['user_id', 'full_name', 'phone'] },
+        { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone', 'profile_picture'] },
+        { model: User, as: 'Creator', attributes: ['user_id', 'full_name', 'phone', 'profile_picture'] },
       ],
     });
 
@@ -134,8 +134,8 @@ const getPropertyById = async (req, res) => {
     const property = await Property.findByPk(id, {
       include: [
         { model: Person, as: 'Owner', attributes: ['id', 'full_name', 'phone', 'email', 'address'] },
-        { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone', 'email'] },
-        { model: User, as: 'Creator', attributes: ['user_id', 'full_name', 'phone', 'email'] },
+        { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone', 'email', 'profile_picture'] },
+        { model: User, as: 'Creator', attributes: ['user_id', 'full_name', 'phone', 'email', 'profile_picture'] },
       ],
     });
 
@@ -236,8 +236,8 @@ const searchProperties = async (req, res) => {
       order: [['createdAt', 'DESC']],
       include: [
         { model: Person, as: 'Owner', attributes: ['id', 'full_name', 'phone'] },
-        { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone'] },
-        { model: User, as: 'Creator', attributes: ['user_id', 'full_name'] },
+        { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone', 'profile_picture'] },
+        { model: User, as: 'Creator', attributes: ['user_id', 'full_name', 'profile_picture'] },
       ]
     });
     res.json(properties);
@@ -476,8 +476,8 @@ const getAvailableProperties = async (req, res) => {
       where,
       include: [
         { model: Person, as: 'Owner', attributes: ['id', 'full_name', 'phone'] },
-        { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone'] },
-        { model: User, as: 'Creator', attributes: ['user_id', 'full_name', 'phone'] },
+        { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone', 'profile_picture'] },
+        { model: User, as: 'Creator', attributes: ['user_id', 'full_name', 'phone', 'profile_picture'] },
       ],
     });
 
@@ -505,8 +505,8 @@ const getPropertiesByOwner = async (req, res) => {
       where: { owner_person_id: id },
       include: [
         { model: Person, as: 'Owner', attributes: ['id', 'full_name', 'phone'] },
-        { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone'] },
-        { model: User, as: 'Creator', attributes: ['user_id', 'full_name', 'phone'] },
+        { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone', 'profile_picture'] },
+        { model: User, as: 'Creator', attributes: ['user_id', 'full_name', 'phone', 'profile_picture'] },
       ],
     });
 
@@ -531,8 +531,8 @@ const getPropertiesByTenant = async (req, res) => {
           as: 'Property',
           include: [
             { model: Person, as: 'Owner', attributes: ['id', 'full_name', 'phone'] },
-            { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone'] },
-            { model: User, as: 'Creator', attributes: ['user_id', 'full_name'] },
+            { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone', 'profile_picture'] },
+            { model: User, as: 'Creator', attributes: ['user_id', 'full_name', 'profile_picture'] },
           ],
         },
       ],
@@ -584,8 +584,8 @@ const getMyProperties = async (req, res) => {
       },
       include: [
         { model: Person, as: 'Owner', attributes: ['id', 'full_name', 'phone'] },
-        { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone'] },
-        { model: User, as: 'Creator', attributes: ['user_id', 'full_name', 'phone'] },
+        { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone', 'profile_picture'] },
+        { model: User, as: 'Creator', attributes: ['user_id', 'full_name', 'phone', 'profile_picture'] },
       ],
     });
     res.json(properties);
@@ -609,8 +609,8 @@ const getPublicProperties = async (req, res) => {
       order: [['createdAt', 'DESC']],
       include: [
         { model: Person, as: 'Owner', attributes: ['id', 'full_name', 'phone'] },
-        { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone'] },
-        { model: User, as: 'Creator', attributes: ['user_id', 'full_name'] },
+        { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone', 'profile_picture'] },
+        { model: User, as: 'Creator', attributes: ['user_id', 'full_name', 'profile_picture'] },
       ],
     });
 
@@ -761,7 +761,8 @@ const getPublicPropertiesByUser = async (req, res) => {
       where,
       include: [
         { model: Person, as: 'Owner', attributes: ['id', 'full_name', 'phone'] },
-        { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone'] },
+        { model: User, as: 'Agent', attributes: ['user_id', 'full_name', 'phone', 'profile_picture'] },
+        { model: User, as: 'Creator', attributes: ['user_id', 'full_name', 'profile_picture'] },
       ],
     });
 

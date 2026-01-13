@@ -93,7 +93,7 @@ const initDB = async () => {
       await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
     }
 
-    await sequelize.sync({ alter: true });
+    await sequelize.sync({ force: false });
     console.log('All models synchronized successfully');
   } catch (error) {
     console.error('Database connection failed:', error);

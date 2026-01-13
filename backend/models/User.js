@@ -12,6 +12,7 @@ const User = sequelize.define('User', {
   username: {
     type: DataTypes.STRING(100),
     allowNull: false,
+    unique: true,
   },
 
   email: {
@@ -72,21 +73,6 @@ const User = sequelize.define('User', {
 }, {
   tableName: 'users',
   timestamps: true,
-
-  indexes: [
-    {
-      unique: true,
-      fields: ['username'],
-    },
-    {
-      unique: true,
-      fields: ['email'],
-    },
-    {
-      unique: true,
-      fields: ['phone'],
-    }
-  ],
 
   hooks: {
     beforeCreate: async (user) => {

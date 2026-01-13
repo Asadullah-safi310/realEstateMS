@@ -34,13 +34,14 @@ export const validateFileType = (file) => {
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.ms-excel',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/plain',
   ];
 
   if (allowedMimes.includes(file.type)) {
     return true;
   }
 
-  const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'webm', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'mts', 'm4v', 'pdf', 'doc', 'docx', 'xls', 'xlsx'];
+  const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'webm', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'mts', 'm4v', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt'];
   const ext = file.name.toLowerCase().split('.').pop();
   return allowedExtensions.includes(ext);
 };
