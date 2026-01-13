@@ -23,6 +23,7 @@ import MyDashboard from './pages/protected/MyDashboard';
 import MyProperties from './pages/protected/MyProperties';
 import AddPropertyProtected from './pages/protected/AddProperty';
 import MyDeals from './pages/protected/MyDeals';
+import DealDetails from './pages/protected/DealDetails';
 import DealForm from './pages/protected/DealForm';
 import ProfileManagement from './pages/protected/ProfileManagement';
 
@@ -95,6 +96,7 @@ function App() {
           <Route path="properties/edit/:id" element={<AddPropertyProtected />} />
           <Route path="favorites" element={<Favorites />} />
           <Route path="deals" element={<MyDeals />} />
+          <Route path="deals/:id" element={<DealDetails />} />
           <Route path="deals/create/:propertyId" element={<DealForm />} />
           <Route path="profile" element={<ProfileManagement />} />
           

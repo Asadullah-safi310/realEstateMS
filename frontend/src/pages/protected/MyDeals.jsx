@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { observer } from 'mobx-react-lite';
-import { Loader2, FileText, Calendar, DollarSign, User } from 'lucide-react';
+import { Loader2, FileText, Calendar, DollarSign, User, ChevronRight } from 'lucide-react';
 import axiosInstance from '../../api/axiosInstance';
 
 const MyDeals = observer(() => {
+  const navigate = useNavigate();
   const [deals, setDeals] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -41,7 +43,11 @@ const MyDeals = observer(() => {
         ) : (
           <div className="grid gap-6">
             {deals.map((deal) => (
-              <div key={deal.deal_id} className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+              <div 
+                key={deal.deal_id} 
+                onClick={() => navigate(`/authenticated/deals/${deal.deal_id}`)}
+                className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group"
+              >
                 <div className="flex flex-col md:flex-row justify-between gap-6">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
@@ -73,7 +79,7 @@ const MyDeals = observer(() => {
                     </div>
                   </div>
 
-                  <div className="flex flex-col justify-center items-end min-w-[150px]">
+                  <div className="flex flex-col items-end justify-between min-w-fit">
                     <div className="text-2xl font-bold text-blue-600 flex items-center">
                       <DollarSign size={20} />
                       {new Intl.NumberFormat('en-US').format(deal.price)}
@@ -83,6 +89,7 @@ const MyDeals = observer(() => {
                         Start: {new Date(deal.start_date).toLocaleDateString()}
                       </div>
                     )}
+                    <ChevronRight size={20} className="text-gray-400 mt-2 group-hover:text-blue-600 transition" />
                   </div>
                 </div>
               </div>
