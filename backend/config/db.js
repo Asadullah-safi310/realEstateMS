@@ -93,6 +93,14 @@ const initDB = async () => {
       await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
     }
 
+    // Ensure national_id is optional in database level
+    try {
+      await sequelize.query('ALTER TABLE persons MODIFY national_id VARCHAR(50) NULL');
+      await sequelize.query('ALTER TABLE users MODIFY national_id VARCHAR(50) NULL');
+    } catch (alterError) {
+      // Tables might not exist or column might already be NULL
+    }
+
     await sequelize.sync({ force: false });
     console.log('All models synchronized successfully');
   } catch (error) {

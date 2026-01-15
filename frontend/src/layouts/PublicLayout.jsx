@@ -4,19 +4,29 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import LoginModal from '../components/auth/LoginModal';
 import RegisterModal from '../components/auth/RegisterModal';
+import ForgotPasswordModal from '../components/auth/ForgotPasswordModal';
 
 const PublicLayout = () => {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
 
   const openLogin = () => {
     setIsRegisterOpen(false);
+    setIsForgotPasswordOpen(false);
     setIsLoginOpen(true);
   };
 
   const openRegister = () => {
     setIsLoginOpen(false);
+    setIsForgotPasswordOpen(false);
     setIsRegisterOpen(true);
+  };
+
+  const openForgotPassword = () => {
+    setIsLoginOpen(false);
+    setIsRegisterOpen(false);
+    setIsForgotPasswordOpen(true);
   };
 
   return (
@@ -24,7 +34,7 @@ const PublicLayout = () => {
       <Navbar onOpenLogin={openLogin} onOpenRegister={openRegister} />
       
       <main className="flex-grow">
-        <Outlet context={{ openLogin, openRegister }} />
+        <Outlet context={{ openLogin, openRegister, openForgotPassword }} />
       </main>
       
       <Footer />
@@ -34,10 +44,16 @@ const PublicLayout = () => {
         isOpen={isLoginOpen} 
         onClose={() => setIsLoginOpen(false)} 
         onSwitchToRegister={openRegister}
+        onForgotPassword={openForgotPassword}
       />
       <RegisterModal 
         isOpen={isRegisterOpen} 
         onClose={() => setIsRegisterOpen(false)} 
+        onSwitchToLogin={openLogin}
+      />
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
         onSwitchToLogin={openLogin}
       />
     </div>

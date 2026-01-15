@@ -13,9 +13,12 @@ const createPerson = async (req, res) => {
     const { full_name, phone, email, national_id, address } = req.body;
     const id_card_path = req.file ? `/uploads/${req.file.filename}` : null;
 
+    // Convert empty strings to null for optional unique fields
+    const formattedNationalId = national_id === '' ? null : national_id;
+
     // Check if person with this national_id already exists
-    if (national_id) {
-      const existingPerson = await Person.findOne({ where: { national_id } });
+    if (formattedNationalId) {
+      const existingPerson = await Person.findOne({ where: { national_id: formattedNationalId } });
       if (existingPerson) {
         return res.status(400).json({ 
           error: 'Person with this National ID already exists.', 
@@ -40,7 +43,7 @@ const createPerson = async (req, res) => {
       full_name,
       phone,
       email,
-      national_id,
+      national_id: formattedNationalId,
       address,
       id_card_path,
     });
@@ -119,6 +122,9 @@ const updatePerson = async (req, res) => {
     const { id } = req.params;
     const { full_name, phone, email, national_id, address } = req.body;
     
+    // Convert empty strings to null for optional unique fields
+    const formattedNationalId = national_id === '' ? null : national_id;
+    
     const person = await Person.findByPk(id);
     if (!person) {
       return res.status(404).json({ error: 'Person not found' });
@@ -128,7 +134,7 @@ const updatePerson = async (req, res) => {
       full_name,
       phone,
       email,
-      national_id,
+      national_id: formattedNationalId,
       address,
     };
 
@@ -186,6 +192,9 @@ const updateProfile = async (req, res) => {
     const { full_name, phone, email, national_id, address } = req.body;
     const profilePictureUrl = req.file ? `/uploads/${req.file.filename}` : null;
     
+    // Convert empty strings to null for optional unique fields
+    const formattedNationalId = national_id === '' ? null : national_id;
+    
     let person = await Person.findOne({ where: { user_id: req.user.user_id } });
     
     if (!person) {
@@ -194,7 +203,7 @@ const updateProfile = async (req, res) => {
         full_name,
         phone,
         email: email || req.user.email,
-        national_id,
+        national_id: formattedNationalId,
         address,
       });
     } else {
@@ -202,19 +211,20 @@ const updateProfile = async (req, res) => {
         full_name,
         phone,
         email: email || person.email,
-        national_id,
+        national_id: formattedNationalId,
         address,
       });
     }
 
-    let user = req.user;
-    if (profilePictureUrl || full_name || phone) {
-      user = await User.findByPk(req.user.user_id);
+    let user = await User.findByPk(req.user.user_id);
+    if (user) {
       const updateData = {};
       if (profilePictureUrl) updateData.profile_picture = profilePictureUrl;
       if (full_name) updateData.full_name = full_name;
       if (phone) updateData.phone = phone;
       if (email) updateData.email = email;
+      if (formattedNationalId !== undefined) updateData.national_id = formattedNationalId;
+      if (address) updateData.address = address;
       
       await user.update(updateData);
     }
@@ -224,9 +234,19 @@ const updateProfile = async (req, res) => {
       profile_picture: user.profile_picture,
       full_name: user.full_name,
       phone: user.phone,
-      email: user.email
+      email: user.email,
+      national_id: user.national_id,
+      address: user.address
     });
   } catch (error) {
+    console.error('Update Profile Error:', error);
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      const field = error.errors[0]?.path;
+      return res.status(400).json({ 
+        error: `Validation error: ${field} already exists.`,
+        message: `${field} is already in use by another account.` 
+      });
+    }
     res.status(500).json({ error: error.message });
   }
 };

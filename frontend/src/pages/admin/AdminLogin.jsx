@@ -3,12 +3,14 @@ import { observer } from 'mobx-react-lite';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Phone, Loader2, AlertCircle } from 'lucide-react';
 import authStore from '../../stores/AuthStore';
+import ForgotPasswordModal from '../../components/auth/ForgotPasswordModal';
 
 const AdminLogin = observer(() => {
   const navigate = useNavigate();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
   
   // If already logged in as admin, redirect to dashboard
   useEffect(() => {
@@ -87,6 +89,16 @@ const AdminLogin = observer(() => {
               </div>
             </div>
 
+            <div className="flex justify-end">
+              <button 
+                type="button"
+                onClick={() => setIsForgotModalOpen(true)}
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Forgot password?
+              </button>
+            </div>
+
             <button
               type="submit"
               disabled={authStore.isLoading}
@@ -110,6 +122,12 @@ const AdminLogin = observer(() => {
           </div>
         </div>
       </div>
+
+      <ForgotPasswordModal 
+        isOpen={isForgotModalOpen} 
+        onClose={() => setIsForgotModalOpen(false)} 
+        onSwitchToLogin={() => setIsForgotModalOpen(false)} 
+      />
     </div>
   );
 });

@@ -3,7 +3,7 @@ import { observer } from 'mobx-react-lite';
 import { X, Mail, Lock, Loader2, Phone } from 'lucide-react';
 import authStore from '../../stores/AuthStore';
 
-const LoginModal = observer(({ isOpen, onClose, onSwitchToRegister }) => {
+const LoginModal = observer(({ isOpen, onClose, onSwitchToRegister, onForgotPassword }) => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -86,7 +86,13 @@ const LoginModal = observer(({ isOpen, onClose, onSwitchToRegister }) => {
                 <input type="checkbox" className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
                 Remember me
               </label>
-              <a href="#" className="text-blue-600 hover:text-blue-700 font-medium">Forgot password?</a>
+              <button 
+                type="button"
+                onClick={onForgotPassword}
+                className="text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Forgot password?
+              </button>
             </div>
 
             <button

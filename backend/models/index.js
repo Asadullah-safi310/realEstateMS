@@ -6,10 +6,14 @@ const PropertyHistory = require('./PropertyHistory');
 const Province = require('./Province');
 const District = require('./District');
 const Area = require('./Area');
+const OTP = require('./OTP');
 
 // --- User & Person Associations ---
 User.hasOne(Person, { foreignKey: 'user_id', as: 'PersonProfile' });
 Person.belongsTo(User, { foreignKey: 'user_id', as: 'User' });
+
+User.hasMany(OTP, { foreignKey: 'user_id', as: 'OTPs' });
+OTP.belongsTo(User, { foreignKey: 'user_id', as: 'User' });
 
 // --- Property Associations ---
 Property.belongsTo(Person, { foreignKey: 'owner_person_id', as: 'Owner' });
@@ -62,4 +66,5 @@ module.exports = {
   Province,
   District,
   Area,
+  OTP,
 };

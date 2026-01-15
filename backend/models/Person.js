@@ -21,7 +21,7 @@ const Person = sequelize.define('Person', {
   },
   national_id: {
     type: DataTypes.STRING(50),
-    allowNull: false,
+    allowNull: true,
     unique: true,
   },
   id_card_path: {
